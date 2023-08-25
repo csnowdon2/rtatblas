@@ -12,29 +12,45 @@
 class MatrixOp {
 protected:
   std::vector<std::unique_ptr<MatrixOp>> operands;
+  int output_operand = -1;
 public:
   MatrixOp(const MatrixOp&) = delete;
   MatrixOp(MatrixOp&&) = default;
 
   MatrixOp(std::vector<std::unique_ptr<MatrixOp>> operands)
-          : operands(std::move(operands)) {}
+          : MatrixOp(std::move(operands), -1) {}
+
+  MatrixOp(std::vector<std::unique_ptr<MatrixOp>> operands, int output_operand)
+          : operands(std::move(operands)), output_operand(output_operand) {}
 
   virtual ~MatrixOp() = default;
 
   virtual Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) = 0;
   virtual size_t output_space_req()  const = 0;
-  virtual size_t scratch_space_req() const = 0;
   virtual MatrixDims dims() const = 0;
 
+  size_t scratch_space_req() const {
+    return workspace_req() - output_space_req();    
+  }
+
   size_t workspace_req() const { 
-    return output_space_req() + scratch_space_req();
+    size_t out_space = output_space_req();
+    size_t operand_space = 0;
+    size_t extra_space = 0;
+
+    for (int i = 0; i < operands.size(); i++) {
+      auto &op = operands[i];
+      if (i != output_operand)
+        operand_space += op->output_space_req();
+      extra_space = std::max(extra_space, operand_space + op->scratch_space_req());
+    }
+
+    return out_space + extra_space;
   }
 
 
-  std::vector<Matrix> compute_operands(cublasHandle_t handle, int output_operand, 
+  std::vector<Matrix> compute_operands(cublasHandle_t handle,
                                        Workspace out_space, Workspace scratch_space) {
-    if (output_operand >= (int)operands.size() || output_operand < -1) throw;
-
     // TODO compute operands in decreasing order of space requirements
     std::vector<Matrix> output;
     for (int i = 0; i < operands.size(); i++) {
@@ -54,7 +70,7 @@ public:
   }
 
   std::vector<Matrix> compute_operands(cublasHandle_t handle, Workspace scratch_space) {
-    return compute_operands(handle, -1, Workspace(), scratch_space);
+    return compute_operands(handle, Workspace(), scratch_space);
   }
 };
 
@@ -68,7 +84,6 @@ public:
   }
 
   size_t output_space_req()  const override {return 0;}
-  size_t scratch_space_req() const override {return 0;}
   MatrixDims dims() const override {return A.dims();}
 };
 
@@ -85,9 +100,6 @@ public:
     operands.push_back(std::move(Aop));
   }
 
-  size_t scratch_space_req() const override {
-    return operands[0]->workspace_req();
-  }
 
   size_t output_space_req() const override {
     return dims().footprint();
@@ -130,7 +142,7 @@ class MatrixMult : public MatrixOp {
 public:
   MatrixMult(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
              std::unique_ptr<MatrixOp> Cop, bool transa, bool transb, 
-             double alpha, double beta) : MatrixOp({}), transa(transa), transb(transb),
+             double alpha, double beta) : MatrixOp({}, 2), transa(transa), transb(transb),
                                           alpha(alpha), beta(beta) {
     operands.push_back(std::move(Aop));
     operands.push_back(std::move(Bop));
@@ -143,13 +155,12 @@ public:
   }
 
   size_t output_space_req() const override {return 0;}
-  size_t scratch_space_req() const override {return 0;}
 
   Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) {
 
     auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
     auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto matrices = compute_operands(handle, 2, out_space, scratch_space);
+    auto matrices = compute_operands(handle, out_space, scratch_space);
 
     Matrix &A = matrices[0];
     Matrix &B = matrices[1];
@@ -170,3 +181,7 @@ public:
   }
 
 };
+
+std::unique_ptr<MatrixOp> transpose_matrix(std::unique_ptr<MatrixOp> matrix, double scale, size_t pad) {
+  return std::make_unique<MatrixMove>(std::move(matrix), scale, true, pad);
+}
