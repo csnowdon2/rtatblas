@@ -13,7 +13,6 @@ std::pair<Workspace, Workspace> allocate_workspace(MatrixOp &op) {
   Workspace output(output_ptr, out_size);
   Workspace scratch(scratch_ptr, scratch_size);
   return std::make_pair(output, scratch);
-
 }
 
 

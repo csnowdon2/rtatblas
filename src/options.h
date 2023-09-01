@@ -46,10 +46,16 @@ public:
   operator T() {return val;}
 
   T val;
+
+  friend bool operator<(const Option &l, const Option &r) { 
+    return l.val < r.val;
+  }
 };
 
 template<typename... Ops>
 struct Options : public std::tuple<Ops...> {
+
+  using std::tuple<Ops...>::tuple;
 
   Options(std::tuple<Ops...> tup) : std::tuple<Ops...>(tup) {}
 

@@ -1,4 +1,5 @@
 #include "event_timer_buffer.h"
+#include <iostream>
 #include "rolling_average.h"
 #include <vector>
 
@@ -21,17 +22,35 @@ public:
     event_timers[dev].add_interval(e1,e2);
   }
 
-  float get_time() {
+  void flush() {
     float ms;
     for (auto &timer : event_timers)
-      while (timer.extract_time(ms))
+      while (timer.extract_time(ms)) {
         avg.add_value(ms);
+      }
+  }
 
+  size_t count() {
+    size_t n = avg.count();
+    for (auto &timer : event_timers)
+      n += timer.count();
+    return n;
+  }
+
+  float get_time() {
+    flush();
     return avg.get_average();
   }
 
-private:
+  float get_std() {
+    flush();
+    return avg.get_std();
+  }
+
+  void print() {avg.print();}
+
   bool synchronous;
+private:
   std::vector<Event_Timer_Buffer> event_timers;
-  Rolling_Average avg;
+  Detailed_Average avg;
 };

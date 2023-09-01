@@ -1,33 +1,11 @@
 #pragma once
+#include "matrix_ops/matrixop.h"
 #include <map>
 #include <gpu-api.h>
 #include <performance_record.h>
+#include <iostream>
 #include "options.h"
 #include "plan.h"
-
-struct Matrix {
-  double *ptr;
-  size_t m, n, ld;
-
-  Matrix (double *ptr, size_t m, size_t n, size_t ld) : ptr(ptr), m(m), n(n), ld(ld) {}
-  Matrix() {}
-
-  size_t footprint() {return n*ld;}
-};
-
-struct Workspace {
-  Workspace(double* ptr, size_t size) : ptr(ptr), size(size) {}
-  Workspace() : ptr(nullptr), size(0) {}
-  Workspace(Workspace w, size_t offset, size_t size) :
-      Workspace(&w[offset], size) {
-    if (offset + size > w.size) throw;
-  }
-
-  double * const ptr;
-  const size_t size;
-
-  double &operator[](size_t ix) {return ptr[ix];}
-};
 
 template<typename Input_Params, typename Input_Key, typename Opts>
 class Planning_System {
@@ -43,26 +21,35 @@ public:
   // measuring performance on the way.
   void execute(Opts opts, Input_Params params, Stream s) {
 
-    Analytics &an = analytics[Input_Key(params)];
+    auto key = Input_Key(params);
+    Analytics &an = analytics[key];
 
-    an.performance_data[opts].measure([&]() {
-      internal_execute(opts, params, s);
+    an.performance_data[opts].measure([&](Stream &str) {
+      internal_execute(opts, params, str);
     }, s);
   }
 
   virtual ~Planning_System() = default;
 
+  void dump_analytics() {
+    for (auto &[key, an] : analytics) {
+      std::cout << "KEY=" << key << std::endl;
+      for (auto &[opts, rec] : an.performance_data) {
+        std::cout << opts << " AVG=" << rec.get_time() << " STD=" << rec.get_std() << std::endl;
+        rec.print();
+      }
+    }
+  }
+
 protected:
   // Actually do the computation
   virtual void internal_execute(Opts opts, Input_Params params, Stream s) = 0;
 
-private:
-  // Add workspace by inheritance?
-
   class Analytics {
+    public:
     Analytics() {
       for (auto &opts : Opts::enumerate()) {
-        performance_data.emplace(std::make_pair(opts, Performance_Record()));
+        performance_data.emplace(std::make_pair(opts, Performance_Record(true)));
       }
     }
 
@@ -81,67 +68,127 @@ struct GEMM_Inputs {
         Matrix C;
   const double alpha; const double beta;
   Workspace space;
-  
-  size_t m() {return C.m;}
-  size_t n() {return C.n;}
-  size_t k() {return (transa == CUBLAS_OP_T) ? A.m : A.n;}
+
+  GEMM_Inputs(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+              const Matrix A, const Matrix B, Matrix C, double alpha, double beta, 
+              Workspace space) 
+        : handle(handle), transa(transa), transb(transb), A(A), B(B), C(C), 
+          alpha(alpha), beta(beta), space(space) {}
+
+  size_t m() {return C.dims().m;}
+  size_t n() {return C.dims().n;}
+  size_t k() {return (transa == CUBLAS_OP_N) ? A.dims().n : A.dims().m;}
 };
 
 struct GEMM_Key {
   cublasOperation_t transa; cublasOperation_t transb;
   int m; int k; int n;
-  int lda; int ldb; int ldc;
+  //int lda; int ldb; int ldc;
 
   GEMM_Key(GEMM_Inputs i) : transa(i.transa), transb(i.transb), 
-                            m(i.m()), n(i.n()), k(i.k()), 
-                            lda(i.A.ld), ldb(i.B.ld), ldc(i.C.ld) {}
+                            m(i.m()), n(i.n()), k(i.k()) {}
+  //                          lda(i.A.dims().ld), ldb(i.B.dims().ld), ldc(i.C.dims().ld) {}
+
+  friend bool operator<(const GEMM_Key &l, const GEMM_Key &r) {
+    if (l.transa < r.transa) return true;
+    if (l.transa > r.transa) return false;
+    if (l.transb < r.transb) return true;
+    if (l.transb > r.transb) return false;
+    if (l.m < r.m) return true;
+    if (l.m > r.m) return false;
+    if (l.k < r.k) return true;
+    if (l.k > r.k) return false;
+    if (l.n < r.n) return true;
+    if (l.n > r.n) return false;
+    //if (l.lda < r.lda) return true;
+    //if (l.lda > r.lda) return false;
+    //if (l.ldb < r.ldb) return true;
+    //if (l.ldb > r.ldb) return false;
+    //if (l.ldc < r.ldc) return true;
+    //if (l.ldc > r.ldc) return false;
+    return false;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const GEMM_Key& dt) {
+      os << (dt.transa == CUBLAS_OP_N ? "N" : "T")
+         << (dt.transb == CUBLAS_OP_N ? "N" : "T")
+         << " m=" << dt.m
+         << " n=" << dt.n
+         << " k=" << dt.k;
+      return os;
+  }
 };
 
 
 
 class GEMM_Planner : public Planning_System<GEMM_Inputs, GEMM_Key, GEMM_Options> {
 public:
-  //GEMM_Options create_plans(GEMM_Inputs params) {
-  //}
+  GEMM_Options create_plan(GEMM_Inputs params) override {
+    // TODO actually come up with a method to determine a plan
+    auto &an = analytics[GEMM_Key(params)];
 
-  //size_t calculate_workspace(GEMM_Inputs params, GEMM_Options opts) {
-  //  
-  //}
+    GEMM_Options plan(NOTRANS, NOTRANS);
+    int min_count = 10000;
+    for (auto &[opts, rec] : an.performance_data)
+      if (rec.count() < min_count) min_count = rec.count();
+
+    if (min_count < 3) 
+      for (auto &[opts, rec] : an.performance_data)
+        if (rec.count() == min_count) return opts;
+
+    float ms = std::numeric_limits<float>::infinity();
+    for (auto &[opts, rec] : an.performance_data) {
+      rec.synchronous = false;
+      float t = rec.get_time();
+      if (t < ms) {
+        plan = opts;
+        ms = t;
+      }
+    }
+
+    return plan;
+  }
+
+  size_t calculate_workspace(GEMM_Options opts, GEMM_Inputs params) {
+    auto mult = form_operation(opts, params);
+    return mult.workspace_req();
+  }
+
+  bool acceptable_plan(GEMM_Options opts, GEMM_Inputs params) {
+    auto mult = form_operation(opts, params);
+    return mult.workspace_req() <= params.space.size();
+  }
+
+  MatrixMult form_operation(GEMM_Options opts, GEMM_Inputs params) {
+
+    std::unique_ptr<MatrixOp> A = std::make_unique<NoOp>(params.A);
+    std::unique_ptr<MatrixOp> B = std::make_unique<NoOp>(params.B);
+    std::unique_ptr<MatrixOp> C = std::make_unique<NoOp>(params.C);
+
+    Workspace space = params.space;
+
+    if (opts.transa() == TRANS) {
+      A = transpose_matrix(std::move(A), 1.0, 32);
+      params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    }
+    if (opts.transb() == TRANS) {
+      B = transpose_matrix(std::move(B), 1.0, 32);
+      params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    }
+
+
+    MatrixMult mult(std::move(A), std::move(B), std::move(C), 
+                    params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
+                    params.alpha, params.beta);
+    return mult;
+  }
 
 private:
 
   void internal_execute(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
-    
-    size_t workspace_offset = 0;
-    const Matrix &A = params.A;
-    const Matrix &B = params.B;
-    const Matrix &C = params.C;
-
-    Matrix left = A;
-    Matrix right = B;
-    if (opts.transa() == TRANS) {
-      left.ptr = &params.space[workspace_offset];
-      left.m = A.n;
-      left.n = A.m;
-      left.ld = ((left.m+31)/32)*32;
-      workspace_offset += ((left.footprint()+511)/512)*512;
-    }
-    if (opts.transb() == TRANS) {
-      right.ptr = &params.space[workspace_offset];
-      right.m = B.n;
-      right.n = B.m;
-      right.ld = ((right.m+31)/32)*32;
-      workspace_offset += ((right.footprint()+511)/512)*512;
-    }
-      // Computation object. Stores all input info required, can be 
-      // modified e.g. to change transposes and padding. Can be 
-      // queried for required output buffer size. Takes output buffer 
-      // and returns matrix object
-
-    // Options tell us what to do to the input
-    // Need workspace to do transposes according to plan. Add to class 
-    // with methods to manage workspace?
-    // Need to iron out what plan means: perform transposes, or switch to 
-    // given transposes?
+    auto mult = form_operation(opts, params);
+    if (mult.workspace_req() > params.space.size()) throw "Insufficient workspace";
+    mult.execute(params.handle, Workspace(), params.space);
+    // What to do if workspace is insufficient?
   }
 };

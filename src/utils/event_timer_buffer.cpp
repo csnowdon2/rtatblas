@@ -1,4 +1,5 @@
 #include "event_timer_buffer.h"
+#include <iostream>
 
 Change_Device::Change_Device(int device) : current_device(device) {
   cudaGetDevice(&old_device);
@@ -27,9 +28,9 @@ bool Event_Timer_Buffer::extract_time(float &ms) {
   auto events = timer_queue.front();
   ms = Event::elapsed_time(events.first, events.second);
 
-  if (ms != NAN) timer_queue.pop();
+  if (!std::isnan(ms)) timer_queue.pop();
 
-  return (ms != NAN);
+  return (!std::isnan(ms));
 }
 
 size_t Event_Timer_Buffer::count() {
