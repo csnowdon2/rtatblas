@@ -29,6 +29,14 @@ public:
     }, s);
   }
 
+  void warmup(Opts opts, Input_Params params, Stream s) {
+
+    auto key = Input_Key(params);
+    Analytics &an = analytics[key];
+
+    internal_execute(opts, params, s);
+  }
+
   virtual ~Planning_System() = default;
 
   void dump_analytics() {
@@ -38,6 +46,7 @@ public:
         std::cout << opts << " AVG=" << rec.get_time() << " STD=" << rec.get_std() << std::endl;
         rec.print();
       }
+      std::cout << std::endl;
     }
   }
 
@@ -100,12 +109,6 @@ struct GEMM_Key {
     if (l.k > r.k) return false;
     if (l.n < r.n) return true;
     if (l.n > r.n) return false;
-    //if (l.lda < r.lda) return true;
-    //if (l.lda > r.lda) return false;
-    //if (l.ldb < r.ldb) return true;
-    //if (l.ldb > r.ldb) return false;
-    //if (l.ldc < r.ldc) return true;
-    //if (l.ldc > r.ldc) return false;
     return false;
   }
 
@@ -181,6 +184,16 @@ public:
                     params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
                     params.alpha, params.beta);
     return mult;
+  }
+
+  double get_floprate(GEMM_Options opts, GEMM_Inputs params) {
+    auto key = GEMM_Key(params);
+    Analytics &an = analytics[key];
+
+    double secs = (double)(an.performance_data[opts].get_time())/1000.0;
+    double tflops = 2*params.m()*params.k()*params.n()/1e12;
+
+    return tflops/secs;
   }
 
 private:

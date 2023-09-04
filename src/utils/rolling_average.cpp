@@ -31,7 +31,7 @@ void Detailed_Average::add_value(double value) {
 
 
 double Detailed_Average::get_average() {
-  return std::reduce(vals.begin(), vals.end())/vals.size();
+  return std::accumulate(vals.begin(), vals.end(), 0.0)/vals.size();
 }
 
 double Detailed_Average::get_std() {

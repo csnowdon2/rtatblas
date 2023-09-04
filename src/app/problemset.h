@@ -1,0 +1,114 @@
+#include <gpu-api.h>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <limits>
+
+struct Problem {
+  int m, k, n;
+  cublasOperation_t opA, opB;
+  double flop_rate;
+
+  Problem() {}
+
+  Problem(int m, int k, int n, 
+          cublasOperation_t opA, 
+          cublasOperation_t opB) :
+      m(m), k(k), n(n), opA(opA), opB(opB), 
+      flop_rate(0.0) {}
+
+  friend std::ostream& operator<<(std::ostream& os, const Problem &problem) {
+    os << problem.m << " " << problem.k << " " << problem.n << " "
+       << op_to_char(problem.opA) << " " << op_to_char(problem.opB) 
+       << " " << problem.flop_rate << std::endl;
+    return os;
+  }
+
+  friend std::istream& operator>>(std::istream &is, Problem &problem) {
+    is >> problem.m;
+    is >> problem.k;
+    is >> problem.n;
+    char A, B;
+    is >> A;
+    is >> B;
+    problem.opA = char_to_op(A);
+    problem.opB = char_to_op(B);
+    is >> problem.flop_rate;
+
+    is.ignore();
+    return is;
+  }
+
+  void print() const {
+    std::cout << "m=" << m 
+              << ", k=" << k 
+              << ", n=" << n 
+              << ", " << op_to_char(opA) << op_to_char(opB) 
+              << ", floprate=" << flop_rate << std::endl;
+  }
+
+private:
+  static std::string op_to_char(cublasOperation_t op) {
+    if (op == CUBLAS_OP_N) return "N";
+    if (op == CUBLAS_OP_T) return "T";
+    return "0";
+  }
+
+  static cublasOperation_t char_to_op(char c) {
+    if (c == 'N') return CUBLAS_OP_N;
+    if (c == 'T') return CUBLAS_OP_T;
+    return CUBLAS_OP_N;
+  }
+
+};
+
+class Problem_Set {
+  const std::string filename = "";
+  std::vector<Problem> problems;
+
+public:
+  friend std::ostream& operator<<(std::ostream& os, const Problem_Set &problem_set) {
+    for (auto &problem : problem_set.problems)
+      os << problem;
+    return os;
+  }
+
+  friend std::istream& operator>>(std::istream& is, Problem_Set &problem_set) {
+    Problem problem;
+    is >> problem;
+    do {
+      std::cout << "Add problem " << problem;
+      problem_set.problems.push_back(problem);
+    } while (is >> problem);
+    return is;
+  }
+
+  Problem_Set() : problems(), filename("") {}
+  Problem_Set(std::string filename) : filename(filename) {
+    std::ifstream is(filename, std::ios::binary);
+    if (!is.good()) {
+      std::cout << "Bad filename " << filename << " given to Problem_Set" << std::endl;
+      throw;
+    }
+    is >> *this;
+  }
+
+  ~Problem_Set() {
+    dump();
+  }
+
+  void dump(std::string file) {
+    if (file == "") return;
+
+    std::ofstream os(file, std::ios::trunc);
+    os << *this;
+  }
+
+  void dump() {
+    dump(filename);
+  }
+
+  void add_problem(Problem p) { problems.push_back(p); }
+
+  std::vector<Problem>& get_problems() { return problems; } 
+};

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <matrixop.h>
-#include <cuda_runtime_api.h>
+#include <gpu-api.h>
 #include <iostream>
 
 std::pair<Workspace, Workspace> allocate_workspace(MatrixOp &op) {

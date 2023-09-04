@@ -66,10 +66,13 @@ void test_gemm(TestMatrix &A, TestMatrix &B, TestMatrix &C, double alpha, double
 TEST(Planning_Test, Hello) {
   GEMM_Planner planner;
   cublasHandle_t handle;
+
   cublasCreate(&handle);
+  cudaDeviceSynchronize();
 
   Stream s;
   cublasSetStream(handle, s);
+  //cublasSetStream(handle, s);
 
   int m = 42;
   int n = 35;
@@ -146,7 +149,7 @@ TEST(Plan_Create_Test, Hello) {
     size_t reps = 100;
     for (int i=0; i<reps; i++) {
       GEMM_Options plan = planner.create_plan(inputs);
-      std::cout << plan << std::endl;
+      //std::cout << plan << std::endl;
       size_t req = planner.calculate_workspace(plan, inputs)*sizeof(double);
       if (req > ws) {
         cudaDeviceSynchronize();

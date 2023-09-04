@@ -5,6 +5,7 @@
 
 struct MatrixDims {
   size_t m, n, ld;
+  MatrixDims() {}
   MatrixDims(size_t m, size_t n, size_t ld) : m(m), n(n), ld(ld) {
     if (ld < m) throw;
   }
@@ -16,6 +17,8 @@ class Matrix {
   Workspace home;
   MatrixDims dimensions;
 public:
+
+  Matrix() {}
 
   Matrix(Workspace home, MatrixDims dimensions)
       : home(home), dimensions(dimensions) {}

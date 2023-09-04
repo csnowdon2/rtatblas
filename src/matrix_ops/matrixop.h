@@ -1,8 +1,8 @@
+#include <gpu-api.h>
 #include "matrix.h"
 #include <iostream>
 #include <vector>
 #include <memory>
-#include <cublas_v2.h>
 
 // Represents a matrix that may not have been computed yet, an 
 // abstract description of a matrix computation. It can be 

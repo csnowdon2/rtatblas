@@ -2,7 +2,11 @@
 #include <variant>
 #include <vector>
 #include <map>
+#ifdef CUDA
 #include <cublas_v2.h>
+#else
+#include <hipblas.h>
+#endif
 #include "options.h"
 
 

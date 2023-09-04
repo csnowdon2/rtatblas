@@ -33,7 +33,7 @@ Stream& Stream::operator=(const Stream& other)  { raw_stream = other.raw_stream;
 
 Stream::operator cudaStream_t() { return raw_stream->stream; }
 
-void Stream::wait_event(Event e) { cudaStreamWaitEvent(*this, e); }
+void Stream::wait_event(Event e) { cudaStreamWaitEvent(*this, e, 0); }
 void Stream::synchronize() { cudaStreamSynchronize(*this); }
 
 

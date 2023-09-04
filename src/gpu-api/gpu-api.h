@@ -1,5 +1,48 @@
 #pragma once
+#ifdef CUDA
 #include <cuda_runtime.h>
+#include <cublas_v2.h>
+#else
+#include <hip/hip_runtime.h>
+#include <hipblas.h>
+#define cudaMemGetInfo hipMemGetInfo
+#define cudaEventCreate hipEventCreate
+#define cudaEventDestroy hipEventDestroy
+#define cudaEventElapsedTime hipEventElapsedTime
+#define cudaEventQuery hipEventQuery
+#define cudaEventRecord hipEventRecord
+#define cudaEventSynchronize hipEventSynchronize
+#define cudaEvent_t hipEvent_t
+#define cudaStreamCreate hipStreamCreate
+#define cudaStreamDestroy hipStreamDestroy
+#define cudaStreamSynchronize hipStreamSynchronize
+#define cudaStream_t hipStream_t
+#define cudaStreamWaitEvent hipStreamWaitEvent
+#define cudaSuccess hipSuccess
+#define cudaSetDevice hipSetDevice
+#define cudaGetDevice hipGetDevice
+#define cudaGetDeviceCount hipGetDeviceCount
+#define cudaDeviceSynchronize hipDeviceSynchronize
+#define cudaErrorInvalidResourceHandle hipErrorInvalidResourceHandle
+#define cudaMalloc hipMalloc
+#define cudaFree hipFree
+#define cudaMemcpy hipMemcpy
+#define cudaMemcpyAsync hipMemcpyAsync
+#define cudaMemcpyDeviceToDevice hipMemcpyDeviceToDevice
+#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaMemcpyHostToDevice hipMemcpyHostToDevice
+#define cublasCreate hipblasCreate
+#define cublasDestroy hipblasDestroy
+#define cublasDgeam hipblasDgeam
+#define cublasDgemm hipblasDgemm
+#define cublasGetStream hipblasGetStream
+#define cublasSetStream hipblasSetStream
+#define cublasHandle_t hipblasHandle_t
+#define cublasOperation_t hipblasOperation_t
+#define cublasStatus_t hipblasStatus_t
+#define CUBLAS_OP_N HIPBLAS_OP_N
+#define CUBLAS_OP_T HIPBLAS_OP_T
+#endif
 #include <memory>
 #include <math.h>
 

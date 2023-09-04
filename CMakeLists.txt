@@ -1,10 +1,24 @@
 cmake_minimum_required(VERSION 3.23)
+set (CMAKE_CXX_STANDARD 17)
 project(RTATBLAS)
 
+find_package(CUDA)
+if (NOT CUDA_FOUND)
+  find_package(HIP REQUIRED)
+  find_package(hipBLAS REQUIRED)
+  find_package(rocBLAS REQUIRED)
+  set(GPU_LIBRARIES ${HIP_LIBRARIES})
+  set(GPU_LIBRARIES ${HIPBLAS_LIBRARIES})
+  set(GPU_INCLUDE_DIRS ${HIP_INCLUDE_DIRS})
+  add_definitions(-DHIP)
+else()
+  set(GPU_LIBRARIES ${CUDA_LIBRARIES} -lcublas)
+  set(GPU_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
+  add_definitions(-DCUDA)
+endif()
+message("GPU LIBS " ${GPU_LIBRARIES})
 
-#enable_language(CUDA)
-find_package(CUDA REQUIRED)
-message(${CUDA_LIBRARIES})
+
 
 add_subdirectory(src)
 enable_testing()

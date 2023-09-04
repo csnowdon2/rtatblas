@@ -1,0 +1,5 @@
+add_executable(measure_performance measure_performance.cpp)
+target_link_libraries(measure_performance PUBLIC rtatblas)
+
+add_executable(run_tests run_tests.cpp)
+target_link_libraries(run_tests PUBLIC rtatblas)

@@ -10,8 +10,8 @@
 TEST(Rolling_Average_Test, Calculation) {
   std::vector<double> xs = {2.4, 14.235146, 137.724, -12.15, -162.15};
   std::vector<double> ys = {14.235146, 137.724, -12.15, -162.15};
-  double xmean = std::reduce(xs.begin(), xs.end())/xs.size();
-  double ymean = std::reduce(ys.begin(), ys.end())/ys.size();
+  double xmean = std::accumulate(xs.begin(), xs.end(), 0.0)/xs.size();
+  double ymean = std::accumulate(ys.begin(), ys.end(), 0.0)/ys.size();
   
   Rolling_Average avg;
   for (auto &x : xs) avg.add_value(x);
