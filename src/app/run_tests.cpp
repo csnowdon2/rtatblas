@@ -3,7 +3,6 @@
 #include <iostream>
 #include <stack>
 #include <variant>
-#include <experimental/filesystem>
 
 class GPU_Stack_Buffer {
   std::stack<size_t> stack;
@@ -21,7 +20,11 @@ public:
     doubles = (doubles/32)*32;
 
     size_t pos = (stack.size() == 0) ? 0 : stack.top();
-    if ((pos+doubles)*sizeof(double) > size) throw;
+    std::cout << "Alloc " << pos << " to " << pos+doubles << "/" << size/sizeof(double) << std::endl;
+    if ((pos+doubles)*sizeof(double) > size) {
+      std::cout << "OVER-ALLOCATION" << std::endl;
+      throw;
+    }
 
     stack.push(pos+doubles);
 
@@ -29,7 +32,7 @@ public:
   }
 
   Matrix allocate_matrix(int m, int n) {
-    size_t size = m*n;
+    size_t size = (size_t)(m)*(size_t)(n);
     Workspace space(alloc(size), size);
 
     Matrix A(space, m, n, m);
@@ -48,16 +51,7 @@ size_t avail_gpu_mem() {
   return free;
 }
 
-int main(int argc, char *argv[]) {
-  if (argc != 2) { 
-    std::cout << "Expected one command line arg: filename" << std::endl;
-    return 1;
-  }
-
-  std::string filename(argv[1]);
-
-  Problem_Set problems(filename);
-
+void run_problems(Problem_Set &problems) {
   cublasHandle_t handle;
   cublasCreate(&handle);
 
@@ -74,20 +68,22 @@ int main(int argc, char *argv[]) {
     GEMM_Options plan(NOTRANS, NOTRANS);
 
     Matrix A, B, C;
-    A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix(m,k) : mem.allocate_matrix(k,n);
+    A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix(m,k) : mem.allocate_matrix(k,m);
     B = (problem.opB == CUBLAS_OP_N) ? mem.allocate_matrix(k,n) : mem.allocate_matrix(n,k);
     C = mem.allocate_matrix(m,n);
 
     GEMM_Inputs inputs(handle, problem.opA, problem.opB, A, B, C,
                        1.0, 0.0, Workspace());
 
-    if (planner.calculate_workspace(plan,inputs)*sizeof(double) > mem.remaining_space())
+    if (planner.calculate_workspace(plan,inputs)*sizeof(double) > mem.remaining_space()) {
+      std::cout << "Insufficient memory for input " << problem << std::endl;
       continue;
+    }
 
     size_t ws = planner.calculate_workspace(plan,inputs)*sizeof(double);
     inputs.space = Workspace(mem.alloc(ws), ws);
 
-    std::cout << m << " " << k << " " << n << std::endl;
+    std::cout << "Run problem " << problem << std::endl;
     planner.warmup(plan, inputs, s);
 
     for (int i = 0; i < 10; i++) 
@@ -96,13 +92,22 @@ int main(int argc, char *argv[]) {
 
     problem.flop_rate = planner.get_floprate(plan, inputs);
 
+    mem.pop();
+    mem.pop();
+    mem.pop();
+    mem.pop();
+    problems.dump();
+  }
+}
 
-    mem.pop();
-    mem.pop();
-    mem.pop();
-    mem.pop();
+int main(int argc, char *argv[]) {
+  if (argc != 2) { 
+    std::cout << "Expected one command line arg: filename" << std::endl;
+    return 1;
   }
 
+  std::string filename(argv[1]);
 
-
+  Problem_Set problems(filename);
+  run_problems(problems);
 }

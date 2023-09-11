@@ -21,6 +21,11 @@ public:
   // measuring performance on the way.
   void execute(Opts opts, Input_Params params, Stream s) {
 
+    if (!warm) {
+      warmup(opts, params, s);
+      warm = true;
+    }
+
     auto key = Input_Key(params);
     Analytics &an = analytics[key];
 
@@ -66,6 +71,7 @@ protected:
   };
 
   std::map<Input_Key, Analytics> analytics;
+  bool warm = false;
 };
 
 
@@ -200,7 +206,10 @@ private:
 
   void internal_execute(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
     auto mult = form_operation(opts, params);
-    if (mult.workspace_req() > params.space.size()) throw "Insufficient workspace";
+    if (mult.workspace_req() > params.space.size()) {
+      std::cout << "INSUFFICIENT WORKSPACE" << std::endl;
+      throw "Insufficient workspace";
+    }
     mult.execute(params.handle, Workspace(), params.space);
     // What to do if workspace is insufficient?
   }

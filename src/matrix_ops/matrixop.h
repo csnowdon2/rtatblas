@@ -116,7 +116,10 @@ public:
 
   Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
     if (out_space.size() < output_space_req() || 
-        scratch_space.size() < scratch_space_req()) throw "Not enough space";
+        scratch_space.size() < scratch_space_req()) {
+      std::cout << "NOT ENOUGH SPACE" << std::endl;
+      throw "Not enough space";
+    }
 
     auto matrices = compute_operands(handle, scratch_space);
     Matrix A = matrices[0];

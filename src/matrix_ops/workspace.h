@@ -14,7 +14,10 @@ public:
 
   Workspace(Workspace other, size_t offset, size_t count) 
       : Workspace(&other.ptr[offset], count) {
-    if (offset+count > other.count) throw;
+    if (offset+count > other.count) {
+      std::cout << "WORKSPACE OFFSET ERROR" << std::endl;
+      throw;
+    }
   }
 
   Workspace peel(size_t size) {

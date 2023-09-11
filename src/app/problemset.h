@@ -19,8 +19,8 @@ struct Problem {
 
   friend std::ostream& operator<<(std::ostream& os, const Problem &problem) {
     os << problem.m << " " << problem.k << " " << problem.n << " "
-       << op_to_char(problem.opA) << " " << op_to_char(problem.opB) 
-       << " " << problem.flop_rate << std::endl;
+       << op_to_char(problem.opA) << " " << op_to_char(problem.opB)
+       << " " << problem.flop_rate;
     return os;
   }
 
@@ -69,7 +69,7 @@ class Problem_Set {
 public:
   friend std::ostream& operator<<(std::ostream& os, const Problem_Set &problem_set) {
     for (auto &problem : problem_set.problems)
-      os << problem;
+      os << problem << std::endl;
     return os;
   }
 
@@ -77,7 +77,7 @@ public:
     Problem problem;
     is >> problem;
     do {
-      std::cout << "Add problem " << problem;
+      std::cout << "Add problem " << problem << std::endl;
       problem_set.problems.push_back(problem);
     } while (is >> problem);
     return is;
