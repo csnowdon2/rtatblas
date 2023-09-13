@@ -171,24 +171,34 @@ Predicate<std::pair<GEMM_Options, GEMM_Inputs>>
 }
 
 class GEMM_Planner : public Planning_System<GEMM_Inputs, GEMM_Key, GEMM_Options> {
+  int tests_until_converge = 1;
 public:
+  GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> predicates, 
+               int tests_until_converge) : Planning_System(predicates), 
+                                           tests_until_converge(tests_until_converge) {
+  }
+  GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> predicates) 
+      : GEMM_Planner(predicates, 1) {}
+  GEMM_Planner() : GEMM_Planner({}, 1) {}
+
   GEMM_Options create_plan(GEMM_Inputs params) override {
     // TODO actually come up with a method to determine a plan
     auto &an = get_analytics(params);
 
-    GEMM_Options plan(NOTRANS, NOTRANS);
+    //GEMM_Options plan(NOTRANS, NOTRANS);
+    GEMM_Options plan = an.performance_data.begin()->first;
     int min_count = 10000;
     for (auto &[opts, rec] : an.performance_data)
       if (rec.count() < min_count) min_count = rec.count();
 
-    if (min_count < 3) 
+    if (min_count < tests_until_converge) 
       for (auto &[opts, rec] : an.performance_data)
         if (rec.count() == min_count) return opts;
 
     float ms = std::numeric_limits<float>::infinity();
     for (auto &[opts, rec] : an.performance_data) {
-      rec.synchronous = false;
       float t = rec.get_time();
+      rec.synchronous = false;
       if (t < ms) {
         plan = opts;
         ms = t;
@@ -204,8 +214,7 @@ public:
   }
 
   bool acceptable_plan(GEMM_Options opts, GEMM_Inputs params) {
-    auto mult = form_operation(opts, params);
-    return mult.workspace_req() <= params.space.size();
+    return calculate_workspace(opts, params) <= params.space.size();
   }
 
   MatrixMult form_operation(GEMM_Options opts, GEMM_Inputs params) {
@@ -225,7 +234,6 @@ public:
       params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
     }
 
-
     MatrixMult mult(std::move(A), std::move(B), std::move(C), 
                     params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
                     params.alpha, params.beta);
@@ -237,6 +245,26 @@ public:
 
     double secs = (double)(an.performance_data[opts].get_time())/1000.0;
     double tflops = 2*params.m()*params.k()*params.n()/1e12;
+
+    return tflops/secs;
+  }
+
+  double get_floprate(GEMM_Inputs params) {
+    Analytics &an = get_analytics(params);
+
+    size_t count = 0;
+    float total = 0.0;
+    for (auto &[opts,rec] : an.performance_data) {
+      if (rec.count() > 0) {
+        rec.flush();
+        count += rec.count();
+        total += rec.count()*rec.get_time();
+      }
+    }
+    std::cout << "Count = " << count << ", Total = " << total << std::endl;
+    double secs = (double)(total/count)/1000.0;
+    double tflops = 2*params.m()*params.k()*params.n()/1e12;
+    std::cout << "Rate = " << tflops/secs << std::endl;
 
     return tflops/secs;
   }

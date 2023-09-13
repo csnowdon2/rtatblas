@@ -1,4 +1,5 @@
 #include <gpu-api.h>
+#include <set>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -35,7 +36,6 @@ struct Problem {
     problem.opB = char_to_op(B);
     is >> problem.flop_rate;
 
-    is.ignore();
     return is;
   }
 
@@ -65,21 +65,35 @@ private:
 class Problem_Set {
   const std::string filename = "";
   std::vector<Problem> problems;
+  std::vector<std::string> comments;
 
 public:
   friend std::ostream& operator<<(std::ostream& os, const Problem_Set &problem_set) {
+    for (auto &comment : problem_set.comments)
+      os << comment << std::endl;
     for (auto &problem : problem_set.problems)
       os << problem << std::endl;
     return os;
   }
 
   friend std::istream& operator>>(std::istream& is, Problem_Set &problem_set) {
-    Problem problem;
-    is >> problem;
-    do {
+    std::string s;
+    while (is.peek() == '#' && std::getline(is,s)) 
+      problem_set.comments.push_back(s);
+
+    while (std::getline(is,s)) {
+      std::stringstream ss(s);
+
+      Problem problem;
+      ss >> problem;
+      if (ss.fail()) {
+        std::cout << "Parse failure on line: " << s << ", size " << s.size() << std::endl;
+        throw;
+      }
       std::cout << "Add problem " << problem << std::endl;
+
       problem_set.problems.push_back(problem);
-    } while (is >> problem);
+    } 
     return is;
   }
 
@@ -109,6 +123,13 @@ public:
   }
 
   void add_problem(Problem p) { problems.push_back(p); }
+
+  bool has_duplicate_dimensions() {
+    std::set<std::tuple<int,int,int>> dim_set;
+    for (auto &problem : problems)
+      dim_set.insert(std::make_tuple(problem.m, problem.k, problem.n));
+    return dim_set.size() != problems.size();
+  }
 
   std::vector<Problem>& get_problems() { return problems; } 
 };

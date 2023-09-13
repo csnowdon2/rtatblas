@@ -24,6 +24,8 @@ public:
 
   void flush() {
     float ms;
+    if (synchronous) cudaDeviceSynchronize();
+
     for (auto &timer : event_timers)
       while (timer.extract_time(ms)) {
         avg.add_value(ms);

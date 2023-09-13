@@ -188,3 +188,7 @@ public:
 std::unique_ptr<MatrixOp> transpose_matrix(std::unique_ptr<MatrixOp> matrix, double scale, size_t pad) {
   return std::make_unique<MatrixMove>(std::move(matrix), scale, true, pad);
 }
+
+std::unique_ptr<MatrixOp> pad_matrix(std::unique_ptr<MatrixOp> matrix, double scale, size_t pad) {
+  return std::make_unique<MatrixMove>(std::move(matrix), scale, false, pad);
+}
