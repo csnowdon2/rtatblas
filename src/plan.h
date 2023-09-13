@@ -14,6 +14,15 @@ enum BLAS_Op {
   TRANS, NOTRANS
 };
 
+BLAS_Op switch_op(BLAS_Op op) {
+  switch (op) {
+    case TRANS:
+      return NOTRANS;
+    case NOTRANS:
+      return TRANS;
+  }
+}
+
 using Trans_Opt = Option<bool, TRANS, NOTRANS>;
 
 class GEMM_Options : public Options<Trans_Opt, Trans_Opt> {

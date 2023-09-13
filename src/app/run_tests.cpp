@@ -76,7 +76,7 @@ void run_problems(Problem_Set &problems) {
                        1.0, 0.0, Workspace());
 
     if (planner.calculate_workspace(plan,inputs)*sizeof(double) > mem.remaining_space()) {
-      std::cout << "Insufficient memory for input " << problem << std::endl;
+      std::cout << "Insufficient memory for input " << problem << ", skipping" << std::endl;
       continue;
     }
 

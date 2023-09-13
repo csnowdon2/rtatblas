@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include "matrix_ops/matrixop.h"
 #include <map>
 #include <gpu-api.h>
@@ -7,9 +8,15 @@
 #include "options.h"
 #include "plan.h"
 
+template<typename T>
+using Predicate = std::function<bool(T)>;
+
 template<typename Input_Params, typename Input_Key, typename Opts>
 class Planning_System {
 public:
+  Planning_System() = default;
+  Planning_System(std::vector<Predicate<std::pair<Opts, Input_Params>>> predicates) 
+      : predicates(predicates) {}
   // Can probably come up with a sensible default that could 
   // be overridden. e.g. just consider walltimes naively 
   // vs using flop rates to figure out absolute performance.
@@ -26,8 +33,7 @@ public:
       warm = true;
     }
 
-    auto key = Input_Key(params);
-    Analytics &an = analytics[key];
+    Analytics &an = get_analytics(params);
 
     an.performance_data[opts].measure([&](Stream &str) {
       internal_execute(opts, params, str);
@@ -36,8 +42,7 @@ public:
 
   void warmup(Opts opts, Input_Params params, Stream s) {
 
-    auto key = Input_Key(params);
-    Analytics &an = analytics[key];
+    Analytics &an = get_analytics(params);
 
     internal_execute(opts, params, s);
   }
@@ -61,15 +66,36 @@ protected:
 
   class Analytics {
     public:
-    Analytics() {
+    Analytics(std::vector<Predicate<Opts>> predicates) {
       for (auto &opts : Opts::enumerate()) {
-        performance_data.emplace(std::make_pair(opts, Performance_Record(true)));
+        bool good = true;
+        for (auto &pred : predicates) {
+          if (!pred(opts)) {
+            good = false;
+            break;
+          }
+        }
+        if (good)
+          performance_data.emplace(std::make_pair(opts, Performance_Record(true)));
       }
     }
+    Analytics() : Analytics({}) {}
 
     std::map<Opts, Performance_Record> performance_data;
   };
 
+  Analytics &get_analytics(Input_Params params) {
+    if (!analytics.count(Input_Key(params))) {
+      std::vector<Predicate<Opts>> preds;
+      for (auto &pred : predicates)
+        preds.push_back([&pred,&params](Opts opts) -> bool 
+            {return pred(std::make_pair(opts,params));});
+      analytics.emplace(std::make_pair(Input_Key(params), preds));
+    }
+    return analytics.find(Input_Key(params))->second;
+  }
+
+  std::vector<Predicate<std::pair<Opts, Input_Params>>> predicates;
   std::map<Input_Key, Analytics> analytics;
   bool warm = false;
 };
@@ -129,12 +155,26 @@ struct GEMM_Key {
 };
 
 
+Predicate<std::pair<GEMM_Options, GEMM_Inputs>>
+    exclude_option(BLAS_Op opA, BLAS_Op opB) {
+  return [opA, opB](std::pair<GEMM_Options, GEMM_Inputs> p) -> bool {
+    auto &opts = p.first;
+    auto &params = p.second;
+    auto opA_ = (params.transa == CUBLAS_OP_N) ? NOTRANS : TRANS;
+    auto opB_ = (params.transb == CUBLAS_OP_N) ? NOTRANS : TRANS;
+
+    if (opts.transa() == TRANS) opA_ = switch_op(opA_);
+    if (opts.transb() == TRANS) opB_ = switch_op(opB_);
+
+    return !(opA == opA_ && opB == opB_);
+  };
+}
 
 class GEMM_Planner : public Planning_System<GEMM_Inputs, GEMM_Key, GEMM_Options> {
 public:
   GEMM_Options create_plan(GEMM_Inputs params) override {
     // TODO actually come up with a method to determine a plan
-    auto &an = analytics[GEMM_Key(params)];
+    auto &an = get_analytics(params);
 
     GEMM_Options plan(NOTRANS, NOTRANS);
     int min_count = 10000;
@@ -193,8 +233,7 @@ public:
   }
 
   double get_floprate(GEMM_Options opts, GEMM_Inputs params) {
-    auto key = GEMM_Key(params);
-    Analytics &an = analytics[key];
+    Analytics &an = get_analytics(params);
 
     double secs = (double)(an.performance_data[opts].get_time())/1000.0;
     double tflops = 2*params.m()*params.k()*params.n()/1e12;

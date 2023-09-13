@@ -65,8 +65,8 @@ public:
       throw;
     }
 
-    footprint_lb = (size_t)(free*0.05);
-    footprint_ub = (size_t)(free*0.2);
+    footprint_lb = (size_t)(free*0.01);
+    footprint_ub = (size_t)(free*0.05);
   }
 
   Random_Problem_Generator() : Random_Problem_Generator(std::mt19937::default_seed) {}
@@ -84,9 +84,6 @@ public:
     double flopcount = dist(rng);
     size_t N = aspects.N_from_flops(flopcount);
     auto [m,k,n] = aspects.get_dims(N);
-    m = (m/32)*32;
-    k = (k/32)*32;
-    n = (n/32)*32;
 
     std::uniform_int_distribution<> bool_dist(0,1);
     cublasOperation_t opA = bool_dist(rng) ? CUBLAS_OP_N : CUBLAS_OP_T;
