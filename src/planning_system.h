@@ -208,6 +208,26 @@ public:
     return plan;
   }
 
+  GEMM_Options degrade_plan(GEMM_Inputs params) {
+    Analytics &an = get_analytics(params);
+    std::vector<std::pair<GEMM_Options, float>> data;
+    for (auto &[opts, rec] : an.performance_data)
+      data.emplace_back(opts, rec.get_time());
+
+    std::sort(data.begin(), data.end(), [](const std::pair<GEMM_Options, float> a,
+                                           const std::pair<GEMM_Options, float> b) {
+      return a.second < b.second;
+    });
+
+    for (auto &x : data) {
+      if (calculate_workspace(x.first, params) <= params.space.size())
+        return x.first;
+    }
+    std::cout << "No valid plan found" << std::endl;
+    throw;
+  }
+
+
   size_t calculate_workspace(GEMM_Options opts, GEMM_Inputs params) {
     auto mult = form_operation(opts, params);
     return mult.workspace_req();
@@ -274,8 +294,10 @@ private:
   void internal_execute(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
     auto mult = form_operation(opts, params);
     if (mult.workspace_req() > params.space.size()) {
-      std::cout << "INSUFFICIENT WORKSPACE" << std::endl;
-      throw "Insufficient workspace";
+      opts = degrade_plan(params);
+      mult = std::move(form_operation(opts, params));
+      //std::cout << "INSUFFICIENT WORKSPACE" << std::endl;
+      //throw "Insufficient workspace";
     }
     mult.execute(params.handle, Workspace(), params.space);
     // What to do if workspace is insufficient?

@@ -7,7 +7,7 @@ void Rolling_Average::add_value(double value) {
   count++;
 }
 
-double Rolling_Average::get_average() {
+double Rolling_Average::get_average() const {
   return total/count;
 }
 
@@ -30,7 +30,7 @@ void Detailed_Average::add_value(double value) {
 }
 
 
-double Detailed_Average::get_average() {
+double Detailed_Average::get_average() const {
   return std::accumulate(vals.begin(), vals.end(), 0.0)/vals.size();
 }
 

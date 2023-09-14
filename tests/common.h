@@ -5,9 +5,11 @@ class BLAS_Test : public ::testing::Test {
 protected:
   virtual ~BLAS_Test() = default;
 
+  Stream s;
   cublasHandle_t handle;
   virtual void SetUp() {
     cublasCreate(&handle);
+    cublasSetStream(handle, s);
   }
   virtual void TearDown() {
     cublasDestroy(handle);
@@ -21,6 +23,15 @@ public:
     count = doubles;
   }
   ~ManagedWorkspace() { gpuAssert(cudaFree(ptr)); }
+
+  void grow_to_fit(size_t doubles) {
+    if (size() < doubles) {
+      gpuAssert(cudaDeviceSynchronize());
+      gpuAssert(cudaFree(ptr));
+      gpuAssert(cudaMalloc(&ptr, doubles));
+      count = doubles;
+    }
+  }
 };
 
 class TestMatrix {

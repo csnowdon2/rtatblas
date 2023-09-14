@@ -6,7 +6,7 @@
 class Rolling_Average {
 public:
   void add_value(double value);
-  double get_average();
+  double get_average() const;
 
   void reset();
   
@@ -21,7 +21,7 @@ public:
   Detailed_Average(size_t limit);
 
   void add_value(double value);
-  double get_average();
+  double get_average() const;
   double get_std();
   size_t count();
 

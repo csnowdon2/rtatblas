@@ -5,16 +5,10 @@
 #include "../src/planning_system.h"
 #include "common.h"
 
+class Planning_Test : public BLAS_Test {};
 
-TEST(Planning_Test, Hello) {
+TEST_F(Planning_Test, GEMM_Correctness) {
   GEMM_Planner planner;
-  cublasHandle_t handle;
-
-  cublasCreate(&handle);
-  cudaDeviceSynchronize();
-
-  Stream s;
-  cublasSetStream(handle, s);
 
   int m = 42;
   int n = 35;
@@ -30,10 +24,9 @@ TEST(Planning_Test, Hello) {
 
   for (int i=0; i<10; i++) {
     for (auto &plan : GEMM_Options::enumerate()) {
-      size_t ws = planner.calculate_workspace(plan, inputs)*sizeof(double);
-      double *space;
-      cudaMalloc(&space, ws);
-      inputs.space = Workspace(space, ws);
+      size_t ws = planner.calculate_workspace(plan, inputs);
+      ManagedWorkspace space(ws);
+      inputs.space = space;
 
       for (int j=0; j<10; j++)
         planner.execute(plan, inputs, s);
@@ -41,66 +34,65 @@ TEST(Planning_Test, Hello) {
       C.download();
       test_gemm(A, B, C, -alpha, 1.0, false, false);
 
-      for (int k = 0; k < C.m; k++) 
-        for (int j = 0; j < C.n; j++) 
-          ASSERT_NEAR(C.host_vector[j*C.ld+k], 0.0, 1e-10);
-      cudaFree(space);
+      ASSERT_TRUE(C.is_zero());
     }
   }
-
-  cublasDestroy(handle);
-  SUCCEED();
 }
 
-TEST(Plan_Create_Test, Hello) {
+TEST_F(Planning_Test, Hello) {
+  // This isn't really testing anything?
   GEMM_Planner planner;
-  cublasHandle_t handle;
-  cublasCreate(&handle);
 
-  Stream s;
-  cublasSetStream(handle, s);
-
-  size_t m = 12000;
-  size_t n = 3840;
-  size_t k = 12000;
+  size_t m = 423;
+  size_t n = 125;
+  size_t k = 318;
 
   TestMatrix A(m,k,m);
   TestMatrix B(k,n,k);
   TestMatrix C(m,n,m);
 
-
   double alpha = 1.0;
 
   GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0, Workspace());
 
-  size_t ws = 0;
-  double *space = nullptr;
+  ManagedWorkspace space(1024);
   for (int j=0; j<2; j++) {
-    auto t1 = std::chrono::high_resolution_clock::now();
     size_t reps = 100;
     for (int i=0; i<reps; i++) {
       GEMM_Options plan = planner.create_plan(inputs);
-      //std::cout << plan << std::endl;
+
       size_t req = planner.calculate_workspace(plan, inputs)*sizeof(double);
-      if (req > ws) {
-        cudaDeviceSynchronize();
-        ws = req;
-        if (space)
-          cudaFree(space);
-        cudaMalloc(&space, ws);
-        inputs.space = Workspace(space, ws);
-      }
-      inputs.space = Workspace(space, ws);
+      space.grow_to_fit(req);
+      inputs.space = space;
 
       planner.execute(plan, inputs, s);
     }
-    cudaDeviceSynchronize();
-    auto t2 = std::chrono::high_resolution_clock::now();
-    double t = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
-    std::cout << "Avg flop rate=" << reps*m*n*k*2/(t*1e9) << "TFLOP/s" << std::endl;
+    gpuAssert(cudaDeviceSynchronize());
     planner.dump_analytics();
   }
+}
 
-  cublasDestroy(handle);
-  SUCCEED();
+// Check that every plan can run without workspace
+TEST_F(Planning_Test, Plan_Degradation) {
+  GEMM_Planner planner;
+
+  size_t m = 69;
+  size_t n = 123;
+  size_t k = 42;
+
+  TestMatrix A(m,k,m);
+  TestMatrix B(k,n,k);
+  TestMatrix C(m,n,m);
+
+  double alpha = 1.0;
+  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0, Workspace());
+
+  for (auto &plan : GEMM_Options::enumerate()) {
+    planner.execute(plan, inputs, s);
+
+    C.download();
+    test_gemm(A, B, C, -alpha, 1.0, false, false);
+
+    ASSERT_TRUE(C.is_zero());
+  }
 }

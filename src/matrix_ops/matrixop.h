@@ -16,6 +16,7 @@ protected:
 public:
   MatrixOp(const MatrixOp&) = delete;
   MatrixOp(MatrixOp&&) = default;
+  MatrixOp& operator=(MatrixOp&&) = default;
 
   MatrixOp(std::vector<std::unique_ptr<MatrixOp>> operands)
           : MatrixOp(std::move(operands), -1) {}
