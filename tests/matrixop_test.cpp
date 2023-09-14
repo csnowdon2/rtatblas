@@ -3,171 +3,67 @@
 #include <matrixop.h>
 #include <gpu-api.h>
 #include <iostream>
+#include <chrono>
+#include "common.h"
 
-std::pair<Workspace, Workspace> allocate_workspace(MatrixOp &op) {
-  double *output_ptr, *scratch_ptr;
-  size_t out_size = op.output_space_req();
-  size_t scratch_size = op.scratch_space_req();
-  cudaMalloc((void**)&output_ptr, out_size*sizeof(double));
-  cudaMalloc((void**)&scratch_ptr, scratch_size*sizeof(double));
-  Workspace output(output_ptr, out_size);
-  Workspace scratch(scratch_ptr, scratch_size);
-  return std::make_pair(output, scratch);
-}
+class MatrixOp_Test : public BLAS_Test {};
 
 
-TEST(MatrixOp_Test, Hello) {
+TEST_F(MatrixOp_Test, MoveTest) {
   const int n = 12;
   const int m = 10;
-  std::vector<double> Ah(m*n);
-  std::vector<double> Bh(m*n);
+  TestMatrix A(m,n,m);
 
-  cublasHandle_t handle;
-  cublasCreate(&handle);
-
-  for (int i = 0; i < m; i++) {
-    for (int j = 0; j < n; j++) {
-      Ah[j*m+i] = i*100+j;
-    }
-  }
-
-  double *Ad, *Bd, *scratch;
-  cudaMalloc((void**)&Ad, m*n*sizeof(double));
-
-  cudaMemcpy(Ad, Ah.data(), m*n*sizeof(double), cudaMemcpyHostToDevice);
-
-
-  Matrix A(Workspace(Ad, m*n), m, n, m);
   std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
+  MatrixMove Bop(std::move(Aop), 1.0, false, 32);
 
-  MatrixMove Bop(std::move(Aop), 1.0, true, 1);
+  auto dims = Bop.dims();
+  TestMatrix B(dims.m,dims.n,dims.ld);
 
-  size_t output_size = Bop.output_space_req()*sizeof(double);
-  cudaMalloc((void**)&Bd, output_size);
+  ManagedWorkspace scratch(Bop.scratch_space_req());
 
-  size_t scratch_size = Bop.scratch_space_req()*sizeof(double);
-  cudaMalloc((void**)&scratch, scratch_size);
+  Bop.execute(handle, B.workspace(), scratch);
+  B.download();
 
-  Matrix B = Bop.execute(handle, Workspace(Bd, output_size), Workspace(scratch, scratch_size));
-  cudaMemcpy(Bh.data(), B.ptr(), output_size, cudaMemcpyDeviceToHost);
-
-  for (int i = 0; i < m; i++) {
-    for (int j = 0; j < n; j++) {
-      std::cout << Ah[j*m+i] << " ";
-
-      //std::cout << Ah[i*n+j] << " " << Bh[i*n+j] << std::endl;
-      //EXPECT_EQ(Ah[i*n+j], Bh[j*m+i]);
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-  for (int j = 0; j < n; j++) {
-    for (int i = 0; i < m; i++) {
-      std::cout << Bh[i*n+j] << " ";
-
-      //std::cout << Ah[i*n+j] << " " << Bh[i*n+j] << std::endl;
-      //EXPECT_EQ(Ah[i*n+j], Bh[j*m+i]);
-    }
-    std::cout << std::endl;
-  }
-  cudaFree(Ad);
-  cudaFree(Bd);
-  cudaFree(scratch);
-  cublasDestroy(handle);
+  ASSERT_TRUE(A == B);
 }
 
-TEST(MatrixOp_Test, MatMulTest) {
-  int m = 5;
-  int k = 4;
-  int n = 3;
+TEST_F(MatrixOp_Test, MatMulTest) {
+  int m = 26;
+  int k = 34;
+  int n = 27;
 
-  std::vector<double> hA(m*k, 0);
-  std::vector<double> hB(n*k, 0);
-  std::vector<double> hC(m*n, 0);
-  std::vector<double> hC_control(m*n, 0);
-
-  cublasHandle_t handle;
-  cublasCreate(&handle);
+  TestMatrix A(m,k,m);
+  TestMatrix B(k,n,k);
+  TestMatrix C(m,n,m);
 
   {
-    std::uniform_real_distribution<double> unif(-1.0, 1.0);
-    std::default_random_engine re;
-
-    for (auto &x : hA) x = unif(re);
-    for (auto &x : hB) x = unif(re);
-  }
-
-  for (int i = 0; i < m; i++) 
-    for (int j = 0; j < n; j++) 
-      for (int l = 0; l < k; l++) 
-        hC_control[j*m+i] += hA[l*m+i]*hB[j*k+l];
-
-
-  double *dA, *dB, *dC;
-  cudaMalloc((void**)&dA, hA.size()*sizeof(double));
-  cudaMalloc((void**)&dB, hB.size()*sizeof(double));
-  cudaMalloc((void**)&dC, hC.size()*sizeof(double));
-
-  cudaMemcpy(dA, hA.data(), hA.size()*sizeof(double), cudaMemcpyHostToDevice);
-  cudaMemcpy(dB, hB.data(), hB.size()*sizeof(double), cudaMemcpyHostToDevice);
-
-  // do the multiply
-  {
-    Matrix A(Workspace(dA, m*k), m, k, m);
-    Matrix B(Workspace(dB, n*k), k, n, k);
-    Matrix C(Workspace(dC, m*n), m, n, m);
-
     std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
     std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
     std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
 
     MatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, 1.0, 0.0);
-    ASSERT_EQ(mult.workspace_req(), 0);
-    mult.execute(handle, Workspace(), Workspace());
+    ASSERT_EQ(mult.output_space_req(), 0);
+    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req()));
 
-    cudaMemcpy(hC.data(), dC, hC.size()*sizeof(double), cudaMemcpyDeviceToHost);
+    C.download();
   }
 
-  for (int i = 0; i < m; i++) 
-    for (int j = 0; j < n; j++) 
-      EXPECT_NEAR(hC[j*m+i], hC_control[j*m+i], 1e-10);
-
+  test_gemm(A, B, C, -1.0, 1.0, false, false);
+  ASSERT_TRUE(C.is_zero());
 }
 
-TEST(MatrixOp_Test, TNMulTest) {
-  int m = 5;
-  int k = 4;
-  int n = 3;
+TEST_F(MatrixOp_Test, TNMulTest) {
+  int m = 25;
+  int k = 14;
+  int n = 32;
 
-  std::vector<double> hA(m*k, 0);
-  std::vector<double> hB(n*k, 0);
-  std::vector<double> hC(m*n, 0);
-
-  cublasHandle_t handle;
-  cublasCreate(&handle);
-
-  {
-    std::uniform_real_distribution<double> unif(-1.0, 1.0);
-    std::default_random_engine re;
-
-    for (auto &x : hA) x = unif(re);
-    for (auto &x : hB) x = unif(re);
-  }
-
-  double *dA, *dB, *dC;
-  cudaMalloc((void**)&dA, hA.size()*sizeof(double));
-  cudaMalloc((void**)&dB, hB.size()*sizeof(double));
-  cudaMalloc((void**)&dC, hC.size()*sizeof(double));
-
-  cudaMemcpy(dA, hA.data(), hA.size()*sizeof(double), cudaMemcpyHostToDevice);
-  cudaMemcpy(dB, hB.data(), hB.size()*sizeof(double), cudaMemcpyHostToDevice);
+  TestMatrix A(k,m,k);
+  TestMatrix B(k,n,k);
+  TestMatrix C(m,n,m);
 
   // do the multiply
   {
-    Matrix A(Workspace(dA, m*k), k, m, k);
-    Matrix B(Workspace(dB, n*k), k, n, k);
-    Matrix C(Workspace(dC, m*n), m, n, m);
-
     std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
     std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
     std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
@@ -184,52 +80,27 @@ TEST(MatrixOp_Test, TNMulTest) {
     Cop = std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop),
                     false, false, 1.0, 1.0);
 
-    Workspace output, scratch;
-    std::tie(output, scratch) = allocate_workspace(*Cop);
-    Cop->execute(handle, output, scratch);
 
-    cudaMemcpy(hC.data(), dC, hC.size()*sizeof(double), cudaMemcpyDeviceToHost);
+    ASSERT_EQ(Cop->output_space_req(), 0);
+    ManagedWorkspace scratch(Cop->scratch_space_req());
+    Cop->execute(handle, Workspace(), scratch);
+    C.download();
   }
 
-  for (int i = 0; i < m; i++) 
-    for (int j = 0; j < n; j++) 
-      EXPECT_NEAR(hC[j*m+i], 0.0, 1e-10);
+  ASSERT_TRUE(C.is_zero());
 }
 
-TEST(MatrixOp_Test, TTMulTest) {
-  int m = 5;
-  int k = 4;
-  int n = 3;
-
-  std::vector<double> hA(m*k, 0);
-  std::vector<double> hB(n*k, 0);
-  std::vector<double> hC(m*n, 0);
-
-  cublasHandle_t handle;
-  cublasCreate(&handle);
-
-  {
-    std::uniform_real_distribution<double> unif(-1.0, 1.0);
-    std::default_random_engine re;
-
-    for (auto &x : hA) x = unif(re);
-    for (auto &x : hB) x = unif(re);
-  }
-
-  double *dA, *dB, *dC;
-  cudaMalloc((void**)&dA, hA.size()*sizeof(double));
-  cudaMalloc((void**)&dB, hB.size()*sizeof(double));
-  cudaMalloc((void**)&dC, hC.size()*sizeof(double));
-
-  cudaMemcpy(dA, hA.data(), hA.size()*sizeof(double), cudaMemcpyHostToDevice);
-  cudaMemcpy(dB, hB.data(), hB.size()*sizeof(double), cudaMemcpyHostToDevice);
+TEST_F(MatrixOp_Test, TTMulTest) {
+  int m = 23;
+  int k = 42;
+  int n = 61;
+  
+  TestMatrix A(k,m,k);
+  TestMatrix B(n,k,n);
+  TestMatrix C(m,n,m);
 
   // do the multiply
   {
-    Matrix A(Workspace(dA, m*k), k, m, k);
-    Matrix B(Workspace(dB, n*k), n, k, n);
-    Matrix C(Workspace(dC, m*n), m, n, m);
-
     std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
     std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
     std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
@@ -247,14 +118,11 @@ TEST(MatrixOp_Test, TTMulTest) {
     Cop = std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop),
                     false, false, 1.0, 1.0);
 
-    Workspace output, scratch;
-    std::tie(output, scratch) = allocate_workspace(*Cop);
-    Cop->execute(handle, output, scratch);
-
-    cudaMemcpy(hC.data(), dC, hC.size()*sizeof(double), cudaMemcpyDeviceToHost);
+    ASSERT_EQ(Cop->output_space_req(), 0);
+    ManagedWorkspace scratch(Cop->scratch_space_req());
+    Cop->execute(handle, Workspace(), scratch);
+    C.download();
   }
 
-  for (int i = 0; i < m; i++) 
-    for (int j = 0; j < n; j++) 
-      EXPECT_NEAR(hC[j*m+i], 0.0, 1e-10);
+  ASSERT_TRUE(C.is_zero());
 }

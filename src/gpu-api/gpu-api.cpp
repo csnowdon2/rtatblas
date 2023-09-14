@@ -8,8 +8,8 @@ public:
 
 class Owning_Stream : public Raw_Stream {
 public:
-  Owning_Stream() { cudaStreamCreate(&stream); }
-  ~Owning_Stream() { cudaStreamDestroy(stream); }
+  Owning_Stream() { gpuAssert(cudaStreamCreate(&stream)); }
+  ~Owning_Stream() { gpuAssert(cudaStreamDestroy(stream)); }
 };
 
 class Non_Owning_Event : public Raw_Event {
@@ -20,8 +20,8 @@ public:
 
 class Owning_Event : public Raw_Event {
 public:
-  Owning_Event() { cudaEventCreate(&event); }
-  ~Owning_Event() { cudaEventDestroy(event); }
+  Owning_Event() { gpuAssert(cudaEventCreate(&event)); }
+  ~Owning_Event() { gpuAssert(cudaEventDestroy(event)); }
 };
 
 
@@ -33,8 +33,8 @@ Stream& Stream::operator=(const Stream& other)  { raw_stream = other.raw_stream;
 
 Stream::operator cudaStream_t() { return raw_stream->stream; }
 
-void Stream::wait_event(Event e) { cudaStreamWaitEvent(*this, e, 0); }
-void Stream::synchronize() { cudaStreamSynchronize(*this); }
+void Stream::wait_event(Event e) { gpuAssert(cudaStreamWaitEvent(*this, e, 0)); }
+void Stream::synchronize() { gpuAssert(cudaStreamSynchronize(*this)); }
 
 
 
@@ -46,8 +46,8 @@ Event& Event::operator=(const Event& other) { raw_event = other.raw_event; retur
 
 Event::operator cudaEvent_t() { return raw_event->event; }
 
-void Event::record(Stream s) { cudaEventRecord(*this, s); }
-void Event::synchronize() { cudaEventSynchronize(*this); }
+void Event::record(Stream s) { gpuAssert(cudaEventRecord(*this, s)); }
+void Event::synchronize() { gpuAssert(cudaEventSynchronize(*this)); }
 bool Event::query() { return cudaEventQuery(*this) == cudaSuccess; }
 
 float Event::elapsed_time(Event start, Event end) {

@@ -11,8 +11,8 @@ class GPU_Stack_Buffer {
   double *ptr;
 
 public:
-  GPU_Stack_Buffer(size_t size) : size(size) { cudaMalloc(&ptr, size); }
-  ~GPU_Stack_Buffer() { cudaFree(ptr); }
+  GPU_Stack_Buffer(size_t size) : size(size) { gpuAssert(cudaMalloc(&ptr, size)); }
+  ~GPU_Stack_Buffer() { gpuAssert(cudaFree(ptr)); }
 
   void pop() { stack.pop(); }
 
@@ -46,7 +46,7 @@ public:
 
 size_t avail_gpu_mem() {
   size_t free, total;
-  cudaMemGetInfo(&free, &total);
+  gpuAssert(cudaMemGetInfo(&free, &total));
   return free;
 }
 
@@ -74,7 +74,7 @@ public:
     cublasSetStream(handle,s);
   }
 
-  ~Runner() { cudaDeviceSynchronize(); cublasDestroy(handle); }
+  ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
 
   GEMM_Options get_plan(GEMM_Inputs inputs) {
     if (!smart) return GEMM_Options(NOTRANS, NOTRANS);
@@ -115,7 +115,7 @@ public:
         planner.execute(plan, inputs, s);
         mem.pop();
       }
-      cudaDeviceSynchronize();
+      gpuAssert(cudaDeviceSynchronize());
   
       problem.flop_rate = planner.get_floprate(inputs);
   

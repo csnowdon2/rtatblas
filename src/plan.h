@@ -23,7 +23,7 @@ BLAS_Op switch_op(BLAS_Op op) {
   }
 }
 
-using Trans_Opt = Option<bool, TRANS, NOTRANS>;
+using Trans_Opt = Option<BLAS_Op, TRANS, NOTRANS>;
 
 class GEMM_Options : public Options<Trans_Opt, Trans_Opt> {
 public:

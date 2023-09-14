@@ -2,12 +2,12 @@
 #include <iostream>
 
 Change_Device::Change_Device(int device) : current_device(device) {
-  cudaGetDevice(&old_device);
-  if (old_device != current_device) cudaSetDevice(current_device);
+  gpuAssert(cudaGetDevice(&old_device));
+  if (old_device != current_device) gpuAssert(cudaSetDevice(current_device));
 }
 
 Change_Device::~Change_Device() {
-  if (old_device != current_device) cudaSetDevice(old_device);
+  if (old_device != current_device) gpuAssert(cudaSetDevice(old_device));
 }
 
 Event_Timer_Buffer::Event_Timer_Buffer(int device_id) : device_id(device_id) {}

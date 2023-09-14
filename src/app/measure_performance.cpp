@@ -10,7 +10,7 @@ cublasOperation_t read_op(std::string op) {
 
 Workspace allocate_workspace(size_t size) {
   double *ptr;
-  cudaMalloc(&ptr, size);
+  gpuAssert(cudaMalloc(&ptr, size));
   return Workspace(ptr, size);
 }
 

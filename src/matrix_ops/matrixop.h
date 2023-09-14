@@ -147,6 +147,19 @@ public:
              std::unique_ptr<MatrixOp> Cop, bool transa, bool transb, 
              double alpha, double beta) : MatrixOp({}, 2), transa(transa), transb(transb),
                                           alpha(alpha), beta(beta) {
+    int kA = transa ? Aop->dims().m : Aop->dims().n;
+    int kB = transb ? Bop->dims().n : Bop->dims().m;
+    if (kA != kB) {
+      std::cout << "Bad matrix mult, kA=" << kA << " kB=" << kB << std::endl;
+      throw;
+    }
+    int mA = transa ? Aop->dims().n : Aop->dims().m;
+    int nB = transb ? Bop->dims().m : Bop->dims().n;
+    if (mA != Cop->dims().m || nB != Cop->dims().n) {
+      std::cout << "Bad matrix mult, mA=" << mA << ", mC=" << Cop->dims().m
+                <<                ", nB=" << nB << ", nC=" << Cop->dims().n << std::endl;
+    }
+    
     operands.push_back(std::move(Aop));
     operands.push_back(std::move(Bop));
     operands.push_back(std::move(Cop));
@@ -159,7 +172,7 @@ public:
 
   size_t output_space_req() const override {return 0;}
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) {
+  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
     auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;

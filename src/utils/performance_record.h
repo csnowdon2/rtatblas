@@ -5,26 +5,32 @@
 
 class Performance_Record {
 public:
-  Performance_Record(bool synchronous = false);
+  Performance_Record(bool synchronous = false) : synchronous(synchronous) {
+    int devs;
+    gpuAssert(cudaGetDeviceCount(&devs));
+    for (int i = 0; i < devs; i++) {
+      event_timers.emplace_back(i);
+    }
+  }
   
   template<typename Func>
   void measure(Func f, Stream s) {
     int dev;
-    cudaGetDevice(&dev);
+    gpuAssert(cudaGetDevice(&dev));
     Event e1, e2;
 
-    if (synchronous) cudaDeviceSynchronize();
+    if (synchronous) gpuAssert(cudaDeviceSynchronize());
     e1.record(s);
     f(s);
     e2.record(s);
-    //if (synchronous) cudaDeviceSynchronize();
+    //if (synchronous) gpuAssert(cudaDeviceSynchronize());
 
     event_timers[dev].add_interval(e1,e2);
   }
 
   void flush() {
     float ms;
-    if (synchronous) cudaDeviceSynchronize();
+    if (synchronous) gpuAssert(cudaDeviceSynchronize());
 
     for (auto &timer : event_timers)
       while (timer.extract_time(ms)) {

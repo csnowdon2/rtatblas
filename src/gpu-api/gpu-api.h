@@ -42,9 +42,26 @@
 #define cublasStatus_t hipblasStatus_t
 #define CUBLAS_OP_N HIPBLAS_OP_N
 #define CUBLAS_OP_T HIPBLAS_OP_T
+#define cudaSuccess hipSuccess
+#define cudaGetErrorString hipGetErrorString 
+#define cudaError_t hipError_t 
 #endif
 #include <memory>
 #include <math.h>
+#include <iostream>
+
+#define gpuAssert(ans)                          \
+  {                                             \
+    gpu_error_check((ans), __FILE__, __LINE__); \
+  }
+
+inline void gpu_error_check(cudaError_t code, const char* file, int line)
+{
+  if (code != cudaSuccess)
+    std::cerr << "GPU Error: " << cudaGetErrorString(code) 
+              << " " << file << " " << line << std::endl;
+}
+
 
 // Stream and Event wrappers, intended to mimic the semantics of 
 // the native API types but with automatic resource management.
