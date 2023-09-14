@@ -1,3 +1,4 @@
+#pragma once
 #include <gpu-api.h>
 #include <set>
 #include <iostream>

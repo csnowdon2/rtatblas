@@ -154,14 +154,24 @@ struct GEMM_Key {
   }
 };
 
+cublasOperation_t switch_op(cublasOperation_t op) {
+  switch (op) {
+    case CUBLAS_OP_N: return CUBLAS_OP_T;
+    case CUBLAS_OP_T: return CUBLAS_OP_N;
+    default: 
+      std::cout << "Invalid blas op" << std::endl;
+      throw;
+  }
+}
+
 
 Predicate<std::pair<GEMM_Options, GEMM_Inputs>>
-    exclude_option(BLAS_Op opA, BLAS_Op opB) {
+    exclude_option(cublasOperation_t opA, cublasOperation_t opB) {
   return [opA, opB](std::pair<GEMM_Options, GEMM_Inputs> p) -> bool {
     auto &opts = p.first;
     auto &params = p.second;
-    auto opA_ = (params.transa == CUBLAS_OP_N) ? NOTRANS : TRANS;
-    auto opB_ = (params.transb == CUBLAS_OP_N) ? NOTRANS : TRANS;
+    auto opA_ = params.transa;
+    auto opB_ = params.transb;
 
     if (opts.transa() == TRANS) opA_ = switch_op(opA_);
     if (opts.transb() == TRANS) opB_ = switch_op(opB_);
@@ -209,6 +219,9 @@ public:
   }
 
   GEMM_Options degrade_plan(GEMM_Inputs params) {
+    // TODO: Plan degradation should interact somehow with plan selection.
+    // Should maybe call create_plan with a reduced set of options?
+    // Make the set of options a parameter for create_plan? Could be good
     Analytics &an = get_analytics(params);
     std::vector<std::pair<GEMM_Options, float>> data;
     for (auto &[opts, rec] : an.performance_data)
@@ -245,14 +258,35 @@ public:
 
     Workspace space = params.space;
 
-    if (opts.transa() == TRANS) {
-      A = transpose_matrix(std::move(A), 1.0, 32);
-      params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    bool transa = false;
+    bool transb = false;
+    switch (opts.transa()) {
+      case TRANS:
+        transa = true;
+        params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+      case PAD:
+        A = std::make_unique<MatrixMove>(std::move(A), 1.0, transa, 32);
+      case NOTRANS:
+        break;
     }
-    if (opts.transb() == TRANS) {
-      B = transpose_matrix(std::move(B), 1.0, 32);
-      params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    switch (opts.transb()) {
+      case TRANS:
+        transb = true;
+        params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+      case PAD:
+        B = std::make_unique<MatrixMove>(std::move(B), 1.0, transb, 32);
+      case NOTRANS:
+        break;
     }
+
+    //if (opts.transa() == TRANS) {
+    //  A = transpose_matrix(std::move(A), 1.0, 32);
+    //  params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    //}
+    //if (opts.transb() == TRANS) {
+    //  B = transpose_matrix(std::move(B), 1.0, 32);
+    //  params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    //}
 
     MatrixMult mult(std::move(A), std::move(B), std::move(C), 
                     params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,

@@ -11,19 +11,18 @@
 
 
 enum BLAS_Op {
-  TRANS, NOTRANS
+  TRANS, PAD, NOTRANS
 };
 
-BLAS_Op switch_op(BLAS_Op op) {
+char op_to_char(BLAS_Op op) {
   switch (op) {
-    case TRANS:
-      return NOTRANS;
-    case NOTRANS:
-      return TRANS;
+    case TRANS: return 'T';
+    case PAD: return 'P';
+    case NOTRANS: return 'N';
   }
 }
 
-using Trans_Opt = Option<BLAS_Op, TRANS, NOTRANS>;
+using Trans_Opt = Option<BLAS_Op, TRANS, PAD, NOTRANS>;
 
 class GEMM_Options : public Options<Trans_Opt, Trans_Opt> {
 public:
@@ -32,8 +31,8 @@ public:
   Trans_Opt transb() const {return std::get<1>(*this);}
 
   friend std::ostream& operator<<(std::ostream& os, const GEMM_Options opts) {
-    os << (opts.transa() == NOTRANS ? "N" : "T");
-    os << (opts.transb() == NOTRANS ? "N" : "T");
+    os << op_to_char(opts.transa());
+    os << op_to_char(opts.transb());
     return os;
   }
 };

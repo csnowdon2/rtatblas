@@ -6,3 +6,6 @@ target_link_libraries(run_tests PUBLIC rtatblas)
 
 add_executable(generate_input generate_input.cpp)
 target_link_libraries(generate_input PUBLIC rtatblas)
+
+add_executable(autotune autotune.cpp)
+target_link_libraries(autotune PUBLIC rtatblas)
