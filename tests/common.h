@@ -71,6 +71,21 @@ public:
 
     for (auto &x : host_vector) x = unif(re);
   }
+  
+  void zero_host() {
+    for (auto &x : host_vector) x = 0.0;
+  }
+
+  void insert(Matrix A) {
+    if (A.dims().m != m || A.dims().n != n || A.dims().ld != ld) {
+      std::cout << "Bad matrix insert" << std::endl;
+      throw;
+    }
+
+    std::cout << "Size = " << footprint()*sizeof(double) << std::endl;
+    gpuAssert(cudaMemcpy(space, A.ptr(), footprint()*sizeof(double), 
+                         cudaMemcpyDeviceToDevice));
+  }
 
   Matrix matrix() {
     return Matrix(space, m, n, ld);
@@ -94,7 +109,7 @@ public:
   }
 
   void print() {
-    for (int i = 0; i < m; i++) {
+    for (int i = 0; i < ld; i++) {
       for (int j = 0; j < n; j++) {
         std::cout << host_vector[j*ld+i] << " ";
       }

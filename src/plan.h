@@ -29,10 +29,12 @@ public:
   using Options<Trans_Opt, Trans_Opt>::Options;
   Trans_Opt transa() const {return std::get<0>(*this);}
   Trans_Opt transb() const {return std::get<1>(*this);}
+  //Trans_Opt transc() const {return std::get<2>(*this);}
 
   friend std::ostream& operator<<(std::ostream& os, const GEMM_Options opts) {
     os << op_to_char(opts.transa());
     os << op_to_char(opts.transb());
+    //os << op_to_char(opts.transc());
     return os;
   }
 };

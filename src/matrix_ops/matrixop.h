@@ -88,32 +88,63 @@ public:
   MatrixDims dims() const override {return A.dims();}
 };
 
-
-// Relocate a matrix in memory
-class MatrixMove : public MatrixOp {
-  double alpha = 1.0;
-  bool transpose = false;
-  size_t pad = 32;
-
+class ScratchMatrix : public MatrixOp {
+  size_t m, n, ld;
 public:
-  MatrixMove(std::unique_ptr<MatrixOp> Aop, double alpha, bool transpose, size_t pad) 
-      : MatrixOp({}), alpha(alpha), transpose(transpose), pad(pad) {
-    operands.push_back(std::move(Aop));
-  }
+  ScratchMatrix(MatrixDims dims) : ScratchMatrix(dims.m,dims.n,dims.ld) {}
+  ScratchMatrix(size_t m, size_t n, size_t ld) : MatrixOp({}), m(m), n(n), ld(ld) {}
+  ScratchMatrix(std::unique_ptr<MatrixOp> &op, int pad) 
+    : MatrixOp({}), m(op->dims().m), n(op->dims().n), ld(((op->dims().m+pad-1)/pad)*pad) {}
 
-
+  // Some of this is replicated from MatrixMove, should think about 
+  // how to nicely collapse common things. Maybe make a ConcreteMatrix 
+  // class and have both inherit.
   size_t output_space_req() const override {
     return dims().footprint();
   }
 
   MatrixDims dims() const override {
-    auto &Aop = operands[0];
-    size_t m = transpose ? Aop->dims().n : Aop->dims().m;
-    size_t n = transpose ? Aop->dims().m : Aop->dims().n;
-    size_t ld = ((m+pad-1)/pad)*pad;
-
     return MatrixDims(m,n,ld);
   }
+
+  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+    return Matrix(out_space, dims());
+  }
+};
+
+class MatrixAccumulate : public MatrixOp {
+  double alpha, beta;
+  bool transpose;
+public:
+  MatrixAccumulate(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
+                   double alpha, double beta, bool transpose) : MatrixOp({}, 1) ,
+                     alpha(alpha), beta(beta), transpose(transpose) {
+    int Am = Aop->dims().m;
+    int An = Aop->dims().n;
+    int Bm = Bop->dims().m;
+    int Bn = Bop->dims().n;
+
+    operands.push_back(std::move(Aop));
+    operands.push_back(std::move(Bop));
+
+    bool bad = false;
+    if (transpose) {
+      bad = bad || (Am != Bn || An != Bm);
+    } else {
+      bad = bad || (Am != Bm || An != Bn);
+    }
+
+    if (bad) {
+      std::cout << "Bad matrix accumulate, Adims=" << Am << "," << An
+                                      << " Bdims=" << Bm << "," << Bn 
+                               << " " << (transpose ? "trans" : "notrans") << std::endl;
+      throw;
+    }
+  }
+
+  size_t output_space_req() const override { return 0; }
+
+  MatrixDims dims() const override { return operands[1]->dims(); }
 
   Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
     if (out_space.size() < output_space_req() || 
@@ -122,23 +153,73 @@ public:
       throw "Not enough space";
     }
 
-    auto matrices = compute_operands(handle, scratch_space);
+    auto matrices = compute_operands(handle, out_space, scratch_space);
+    Matrix A = matrices[0];
+    Matrix B = matrices[1];
+
+    size_t lda = A.dims().ld;
+    size_t ldb = B.dims().ld;
+    std::cout << "lda=" << lda << " ldb=" << ldb << std::endl;
+    cublasDgeam(handle,
+                transpose ? CUBLAS_OP_T : CUBLAS_OP_N, 
+                CUBLAS_OP_N,
+                B.dims().m, B.dims().n,
+                &alpha,
+                A.ptr(), lda,
+                &beta,
+                B.ptr(), ldb,
+                B.ptr(), ldb);
+    return B;
+  }
+};
+
+class MatrixMove : public MatrixOp {
+private:
+  double alpha;
+  bool transpose;
+  size_t pad;
+public:
+  MatrixMove(std::unique_ptr<MatrixOp> Aop, double alpha, bool transpose, size_t pad)
+      : MatrixOp({}), alpha(alpha), transpose(transpose), pad(pad) {
+    operands.push_back(std::move(Aop));
+  }
+
+  size_t output_space_req() const override { return dims().footprint(); }
+
+  MatrixDims dims() const override {
+    auto &Aop = operands[0];
+    size_t m = transpose ? Aop->dims().n : Aop->dims().m;
+    size_t n = transpose ? Aop->dims().m : Aop->dims().n;
+    size_t ld = ((m+pad-1)/pad)*pad;
+    return MatrixDims(m,n,ld);
+  };
+
+  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+    if (out_space.size() < output_space_req() || 
+        scratch_space.size() < scratch_space_req()) {
+      std::cout << "NOT ENOUGH SPACE" << std::endl;
+      throw "Not enough space";
+    }
+    auto matrices = compute_operands(handle, out_space, scratch_space);
     Matrix A = matrices[0];
     Matrix B(out_space, dims());
 
+    size_t lda = A.dims().ld;
+    size_t ldb = B.dims().ld;
     double beta = 0.0;
     cublasDgeam(handle,
                 transpose ? CUBLAS_OP_T : CUBLAS_OP_N, 
                 CUBLAS_OP_N,
                 B.dims().m, B.dims().n,
                 &alpha,
-                A.ptr(), A.dims().ld,
+                A.ptr(), lda,
                 &beta,
-                B.ptr(), B.dims().ld,
-                B.ptr(), B.dims().ld);
+                B.ptr(), ldb,
+                B.ptr(), ldb);
     return B;
   }
 };
+
 
 class MatrixMult : public MatrixOp {
   bool transa, transb;
@@ -199,10 +280,3 @@ public:
 
 };
 
-std::unique_ptr<MatrixOp> transpose_matrix(std::unique_ptr<MatrixOp> matrix, double scale, size_t pad) {
-  return std::make_unique<MatrixMove>(std::move(matrix), scale, true, pad);
-}
-
-std::unique_ptr<MatrixOp> pad_matrix(std::unique_ptr<MatrixOp> matrix, double scale, size_t pad) {
-  return std::make_unique<MatrixMove>(std::move(matrix), scale, false, pad);
-}

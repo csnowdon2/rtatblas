@@ -25,6 +25,10 @@ TEST_F(MatrixOp_Test, MoveTest) {
   Bop.execute(handle, B.workspace(), scratch);
   B.download();
 
+  std::cout << "A" << std::endl;
+  A.print();
+  std::cout << "B" << std::endl;
+  B.print();
   ASSERT_TRUE(A == B);
 }
 
@@ -75,7 +79,7 @@ TEST_F(MatrixOp_Test, TNMulTest) {
     Aop = std::make_unique<NoOp>(A);
     Bop = std::make_unique<NoOp>(B);
 
-    Aop = transpose_matrix(std::move(Aop), -2.0, 8);
+    Aop = std::make_unique<MatrixMove>(std::move(Aop), -2.0, true, 8);
 
     Cop = std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop),
                     false, false, 1.0, 1.0);
@@ -112,8 +116,8 @@ TEST_F(MatrixOp_Test, TTMulTest) {
     Aop = std::make_unique<NoOp>(A);
     Bop = std::make_unique<NoOp>(B);
 
-    Aop = transpose_matrix(std::move(Aop), 0.5, 16);
-    Bop = transpose_matrix(std::move(Bop), -4.0, 8);
+    Aop = std::make_unique<MatrixMove>(std::move(Aop), 0.5, true, 16);
+    Bop = std::make_unique<MatrixMove>(std::move(Bop), -4.0, true, 8);
 
     Cop = std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop),
                     false, false, 1.0, 1.0);

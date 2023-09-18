@@ -7,7 +7,7 @@ struct MatrixDims {
   size_t m, n, ld;
   MatrixDims() {}
   MatrixDims(size_t m, size_t n, size_t ld) : m(m), n(n), ld(ld) {
-    if (ld < m) throw;
+    if (ld < m) throw "ld < m in MatrixDims";
   }
 
   const size_t footprint() const {return ld*n;}

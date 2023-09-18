@@ -278,16 +278,14 @@ public:
       case NOTRANS:
         break;
     }
+    //if (opts.transc() != NOTRANS) {
+    //    std::unique_ptr<MatrixOp> scratch = std::make_unique<ScratchMatrix>(C, 32);
+    //    MatrixMult mult
 
-    //if (opts.transa() == TRANS) {
-    //  A = transpose_matrix(std::move(A), 1.0, 32);
-    //  params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    //  case NOTRANS:
+    //    break;
+    //} else {
     //}
-    //if (opts.transb() == TRANS) {
-    //  B = transpose_matrix(std::move(B), 1.0, 32);
-    //  params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
-    //}
-
     MatrixMult mult(std::move(A), std::move(B), std::move(C), 
                     params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
                     params.alpha, params.beta);
