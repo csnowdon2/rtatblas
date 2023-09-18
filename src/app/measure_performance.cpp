@@ -41,14 +41,10 @@ int main(int argc, char *argv[]) {
   Stream s;
   cublasSetStream(handle, s);
 
-  std::vector<GEMM_Options> plans;
-  plans.emplace_back(NOTRANS,NOTRANS);
-  plans.emplace_back(TRANS,NOTRANS);
-  plans.emplace_back(NOTRANS,TRANS);
-  plans.emplace_back(TRANS,TRANS);
+  auto plans = GEMM_Options::enumerate();
 
-  auto A = allocate_matrix(m,k);
-  auto B = allocate_matrix(n,k);
+  auto A = opA == CUBLAS_OP_N ? allocate_matrix(m,k) : allocate_matrix(k,m);
+  auto B = opB == CUBLAS_OP_N ? allocate_matrix(k,n) : allocate_matrix(n,k);
   auto C = allocate_matrix(m,n);
   GEMM_Inputs inputs(handle, opA, opB, A, B, C, 1.0, 0.0, Workspace());
   

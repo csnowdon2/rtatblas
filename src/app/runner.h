@@ -51,25 +51,24 @@ size_t avail_gpu_mem() {
 }
 
 class Runner {
+protected:
   GPU_Stack_Buffer mem;
   cublasHandle_t handle;
   Stream s;
-  bool smart = false;
   GEMM_Planner planner;
 
-  std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> make_preds() {
-    if (!smart) return {};
-    std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> ret;
-    ret.emplace_back(exclude_option(CUBLAS_OP_T,CUBLAS_OP_T));
-    ret.emplace_back(exclude_option(CUBLAS_OP_T,CUBLAS_OP_N));
-    return ret;
-  }
+  //std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> make_preds() {
+  //  std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> ret;
+  //  ret.emplace_back(exclude_option(CUBLAS_OP_T,CUBLAS_OP_T));
+  //  ret.emplace_back(exclude_option(CUBLAS_OP_T,CUBLAS_OP_N));
+  //  return ret;
+  //}
 
 public:
   
 
-  Runner(bool smart = false) : mem((size_t)(((double)avail_gpu_mem())*0.9)), smart(smart),
-                               planner(make_preds(), 1){
+  Runner() : mem((size_t)(((double)avail_gpu_mem())*0.9)), 
+             planner({}, 1){
     cublasCreate(&handle);
     cublasSetStream(handle,s);
   }
@@ -77,8 +76,7 @@ public:
   virtual ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
 
   virtual GEMM_Options get_plan(GEMM_Inputs inputs) {
-    if (!smart) return GEMM_Options(NOTRANS, NOTRANS);
-    return planner.create_plan(inputs);
+    return GEMM_Options(NOTRANS, NOTRANS);
   }
 
   void sync() { s.synchronize(); }
@@ -131,3 +129,9 @@ public:
   }
 };
 
+class SmartRunner : public Runner {
+public:
+  GEMM_Options get_plan(GEMM_Inputs inputs) override {
+    return planner.create_plan(inputs);
+  }
+};

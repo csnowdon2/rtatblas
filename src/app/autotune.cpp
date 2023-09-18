@@ -2,6 +2,16 @@
 #include "runner.h"
 #include <iostream>
 
+class RoundRobinRunner : public Runner {
+  int i=-1;
+public:
+  GEMM_Options get_plan(GEMM_Inputs inputs) override {
+    const auto ops = GEMM_Options::enumerate();
+    i = (i+1)%ops.size();
+    return ops[i];
+  }
+};
+
 int main(int argc, char *argv[]) {
   if (argc != 7) { 
     std::cout << "Expected command line args: m k n opA opB reps" << std::endl;
@@ -17,7 +27,7 @@ int main(int argc, char *argv[]) {
 
   int reps = atoi(argv[6]);
 
-  Runner runner(true);
+  RoundRobinRunner runner;
 
   Problem_Set problems;
   problems.add_problem(p);

@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
     reps = atoi(argv[2]);
 
   std::cout << "Running file " << filename << " with " << reps << " reps" << std::endl;
-  Runner runner(true);
+  SmartRunner runner;
   Problem_Set problems(filename);
   // TODO check for duplicate dimensions when using smart measurement
   runner.run_problems(problems, reps);
