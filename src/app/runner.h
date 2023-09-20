@@ -78,7 +78,7 @@ public:
   virtual ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
 
   virtual GEMM_Options get_plan(GEMM_Inputs inputs) {
-    return GEMM_Options(NOTRANS, NOTRANS, NOTRANS);
+    return GEMM_Options(NOTRANS, NOPAD, NOTRANS, NOPAD, NOTRANS, NOPAD);
   }
 
   void sync() { s.synchronize(); }
@@ -102,7 +102,7 @@ public:
       size_t m = problem.m;
       size_t k = problem.k;
       size_t n = problem.n;
-      GEMM_Options plan(NOTRANS, NOTRANS, NOTRANS);
+      GEMM_Options plan(NOTRANS, NOPAD, NOTRANS, NOPAD, NOTRANS, NOPAD);
   
       Matrix A, B, C;
       A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix(m,k) : mem.allocate_matrix(k,m);

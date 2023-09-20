@@ -314,33 +314,29 @@ public:
 
     Workspace space = params.space;
 
-    bool transa = false;
-    bool transb = false;
-    switch (opts.transa()) {
-      case TRANS:
-        transa = true;
-        params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
-      case PAD:
-        A = std::make_unique<MatrixMove>(std::move(A), 1.0, transa, 32);
-      case NOTRANS:
-        break;
-    }
-    switch (opts.transb()) {
-      case TRANS:
-        transb = true;
-        params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
-      case PAD:
-        B = std::make_unique<MatrixMove>(std::move(B), 1.0, transb, 32);
-      case NOTRANS:
-        break;
-    }
+    bool transa = opts.transa() == TRANS;
+    bool transb = opts.transb() == TRANS;
+    bool transc = opts.transc() == TRANS;
+    bool pada = opts.pada() == PAD;
+    bool padb = opts.padb() == PAD;
+    bool padc = opts.padc() == PAD;
 
-    if (opts.transc() != NOTRANS) {
-        if (opts.transc() == PAD) {
+    if (transa) 
+      params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    if (transa || pada)
+      A = std::make_unique<MatrixMove>(std::move(A), 1.0, transa, pada ? 32 : 1);
+
+    if (transb)
+      params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+    if (transb || padb)
+      B = std::make_unique<MatrixMove>(std::move(B), 1.0, transb, padb ? 32 : 1);
+
+    if (transc || padc) {
+        if (!transc) {
           auto scratch = std::make_unique<MatrixMultAlloc>(std::move(A), std::move(B),
                                                            params.transa == CUBLAS_OP_T, 
                                                            params.transb == CUBLAS_OP_T, 
-                                                           params.alpha, 32);
+                                                           params.alpha, padc ? 32 : 1);
 
           return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
                                                     1.0, params.beta, false);
@@ -348,7 +344,7 @@ public:
           auto scratch = std::make_unique<MatrixMultAlloc>(std::move(B), std::move(A), 
                                                            params.transb != CUBLAS_OP_T, 
                                                            params.transa != CUBLAS_OP_T, 
-                                                           params.alpha, 32);
+                                                           params.alpha, padc ? 32 : 1);
 
           return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
                                                     1.0, params.beta, true);

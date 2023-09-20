@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
   runner.run_problems(problems, reps);
   runner.sync();
   //runner.print_analytics();
-  runner.print_top_n(3);
-  runner.print_bottom_n(3);
+  int N = GEMM_Options::enumerate().size();
+  runner.print_top_n(N);
+  //runner.print_bottom_n(N);
 }
