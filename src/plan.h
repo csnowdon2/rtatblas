@@ -11,7 +11,7 @@
 
 
 enum BLAS_Op {
-  TRANS, PAD, NOTRANS
+  NOTRANS, PAD, TRANS
 };
 
 char op_to_char(BLAS_Op op) {
@@ -24,17 +24,17 @@ char op_to_char(BLAS_Op op) {
 
 using Trans_Opt = Option<BLAS_Op, TRANS, PAD, NOTRANS>;
 
-class GEMM_Options : public Options<Trans_Opt, Trans_Opt> {
+class GEMM_Options : public Options<Trans_Opt, Trans_Opt, Trans_Opt> {
 public:
-  using Options<Trans_Opt, Trans_Opt>::Options;
+  using Options<Trans_Opt, Trans_Opt, Trans_Opt>::Options;
   Trans_Opt transa() const {return std::get<0>(*this);}
   Trans_Opt transb() const {return std::get<1>(*this);}
-  //Trans_Opt transc() const {return std::get<2>(*this);}
+  Trans_Opt transc() const {return std::get<2>(*this);}
 
   friend std::ostream& operator<<(std::ostream& os, const GEMM_Options opts) {
     os << op_to_char(opts.transa());
     os << op_to_char(opts.transb());
-    //os << op_to_char(opts.transc());
+    os << op_to_char(opts.transc());
     return os;
   }
 };

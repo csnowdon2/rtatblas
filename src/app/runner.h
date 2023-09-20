@@ -22,6 +22,8 @@ public:
     size_t pos = (stack.size() == 0) ? 0 : stack.top();
     if ((pos+doubles)*sizeof(double) > size) {
       std::cout << "OVER-ALLOCATION" << std::endl;
+      std::cout << "At " << pos*sizeof(double) << "/" << size << std::endl;
+      std::cout << "Requested " << doubles*sizeof(double) << std::endl;
       throw;
     }
 
@@ -76,20 +78,31 @@ public:
   virtual ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
 
   virtual GEMM_Options get_plan(GEMM_Inputs inputs) {
-    return GEMM_Options(NOTRANS, NOTRANS);
+    return GEMM_Options(NOTRANS, NOTRANS, NOTRANS);
   }
 
   void sync() { s.synchronize(); }
 
   void print_analytics() { planner.dump_analytics(); } 
 
+  void print_top_n(int n) {
+    planner.dump_top_n(n);
+  }
+
+  void print_bottom_n(int n) {
+    planner.dump_bottom_n(n);
+  }
+
   void run_problems(Problem_Set &problems, int reps) {
   
+    // TODO Use the existing workspace class rather than the Stack thing, 
+    // it does the same thing but will be more elegant (if it works how 
+    // I think it does)
     for (auto &problem : problems.get_problems()) {
-      int m = problem.m;
-      int k = problem.k;
-      int n = problem.n;
-      GEMM_Options plan(NOTRANS, NOTRANS);
+      size_t m = problem.m;
+      size_t k = problem.k;
+      size_t n = problem.n;
+      GEMM_Options plan(NOTRANS, NOTRANS, NOTRANS);
   
       Matrix A, B, C;
       A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix(m,k) : mem.allocate_matrix(k,m);
@@ -108,9 +121,9 @@ public:
           std::cout << "Insufficient memory for input " << problem << ", skipping" << std::endl;
           continue;
         }
-        std::cout << "Running " << plan << std::endl;
+        //std::cout << "Running " << plan << std::endl;
 
-        size_t ws = planner.calculate_workspace(plan,inputs)*sizeof(double);
+        size_t ws = planner.calculate_workspace(plan,inputs);
         inputs.space = Workspace(mem.alloc(ws), ws);
 
         if (i == 0) planner.warmup(plan,inputs,s);

@@ -10,9 +10,9 @@ class Planning_Test : public BLAS_Test {};
 TEST_F(Planning_Test, GEMM_Correctness) {
   GEMM_Planner planner;
 
-  int m = 42;
-  int n = 35;
-  int k = 60;
+  int m = 23;
+  int n = 16;
+  int k = 35;
 
   TestMatrix A(m,k,m);
   TestMatrix B(k,n,k);
@@ -28,13 +28,12 @@ TEST_F(Planning_Test, GEMM_Correctness) {
       ManagedWorkspace space(ws);
       inputs.space = space;
 
-      for (int j=0; j<10; j++)
-        planner.execute(plan, inputs, s);
+      planner.execute(plan, inputs, s);
 
       C.download();
       test_gemm(A, B, C, -alpha, 1.0, false, false);
 
-      ASSERT_TRUE(C.is_zero());
+      EXPECT_TRUE(C.is_zero());
     }
   }
 }

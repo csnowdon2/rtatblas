@@ -159,7 +159,6 @@ public:
 
     size_t lda = A.dims().ld;
     size_t ldb = B.dims().ld;
-    std::cout << "lda=" << lda << " ldb=" << ldb << std::endl;
     cublasDgeam(handle,
                 transpose ? CUBLAS_OP_T : CUBLAS_OP_N, 
                 CUBLAS_OP_N,
@@ -280,3 +279,58 @@ public:
 
 };
 
+class MatrixMultAlloc : public MatrixOp {
+  bool transa, transb;
+  double alpha;
+  size_t pad;
+public:
+  MatrixMultAlloc(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
+                  bool transa, bool transb, double alpha, size_t pad) 
+              : MatrixOp({}), transa(transa), transb(transb), alpha(alpha), pad(pad) {
+    int kA = transa ? Aop->dims().m : Aop->dims().n;
+    int kB = transb ? Bop->dims().n : Bop->dims().m;
+    if (kA != kB) {
+      std::cout << "Bad matrix mult, kA=" << kA << " kB=" << kB << std::endl;
+      throw;
+    }
+    
+    operands.push_back(std::move(Aop));
+    operands.push_back(std::move(Bop));
+  }
+
+  MatrixDims dims() const override {
+    auto &Aop = operands[0];
+    auto &Bop = operands[1];
+    size_t m = transa ? Aop->dims().n : Aop->dims().m;
+    size_t n = transb ? Bop->dims().m : Bop->dims().n;
+    size_t ld = ((m+pad-1)/pad)*pad;
+    return MatrixDims(m,n,ld);
+  }
+
+  size_t output_space_req() const override {return dims().footprint();}
+
+  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+    auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
+    auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
+    auto matrices = compute_operands(handle, out_space, scratch_space);
+
+    Matrix &A = matrices[0];
+    Matrix &B = matrices[1];
+    Matrix C(out_space, dims());
+
+    int m = C.dims().m;
+    int n = C.dims().n;
+    int k = transa ? A.dims().m : A.dims().n;
+    double beta = 0.0;
+    cublasDgemm(handle,
+                opA, opB,
+                m, n, k,
+                &alpha,
+                A.ptr(), A.dims().ld,
+                B.ptr(), B.dims().ld,
+                &beta,
+                C.ptr(), C.dims().ld);
+    return C;
+  }
+
+};

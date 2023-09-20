@@ -15,7 +15,7 @@ template<typename Input_Params, typename Input_Key, typename Opts>
 class Planning_System {
 public:
   Planning_System() = default;
-  Planning_System(std::vector<Predicate<std::pair<Opts, Input_Params>>> predicates) 
+  Planning_System(std::vector<Predicate<std::pair<Opts, Input_Key>>> predicates) 
       : predicates(predicates) {}
   // Can probably come up with a sensible default that could 
   // be overridden. e.g. just consider walltimes naively 
@@ -60,6 +60,58 @@ public:
     }
   }
 
+  // TODO don't replicate code 
+  void dump_top_n(int n) {
+    std::cout << "TOP " << n << std::endl;
+    for (auto &[key,an] : analytics) {
+      auto top = top_n(key, n);
+
+      std::cout << key << std::endl;
+      for (int i = 0; i < n; i++) {
+        std::cout << i+1 << " " << top[i] << " " << an.performance_data[top[i]].get_time() << std::endl;
+      }
+    }
+  }
+
+  void dump_bottom_n(int n) {
+    std::cout << "BOTTOM " << n << std::endl;
+    for (auto &[key,an] : analytics) {
+      auto top = bottom_n(key, n);
+
+      std::cout << key << std::endl;
+      for (int i = 0; i < n; i++) {
+        std::cout << i+1 << " " << top[i] << " " << an.performance_data[top[i]].get_time() << std::endl;
+      }
+    }
+  }
+
+  std::vector<Opts> get_n(Input_Key key, int n, std::function<bool(float,float)> cmp) {
+    auto &data = get_analytics(key).performance_data;
+
+    if (n < data.size()) n = data.size();
+    std::vector<Opts> top(n);
+
+    std::vector<Opts> keys;
+    std::transform(data.cbegin(), data.cend(),
+                   std::back_inserter(keys),
+                   [&](const std::pair<Opts, Performance_Record>& pair) { return pair.first; });
+
+    std::partial_sort_copy(keys.cbegin(), keys.cend(),
+                           top.begin(), top.end(),
+                           [&](auto const& l, auto const& r) 
+                             { return cmp(data[l].get_time(), data[r].get_time()); });
+
+    return top;
+  }
+
+  std::vector<Opts> top_n(Input_Key key, int n) {
+    return get_n(key, n, [](float a, float b) {return a<b;});
+  }
+
+  std::vector<Opts> bottom_n(Input_Key key, int n) {
+    return get_n(key, n, [](float a, float b) {return a>b;});
+  }
+
 protected:
   // Actually do the computation
   virtual void internal_execute(Opts opts, Input_Params params, Stream s) = 0;
@@ -84,18 +136,22 @@ protected:
     std::map<Opts, Performance_Record> performance_data;
   };
 
-  Analytics &get_analytics(Input_Params params) {
-    if (!analytics.count(Input_Key(params))) {
+  Analytics &get_analytics(Input_Key key) {
+    if (!analytics.count(key)) {
       std::vector<Predicate<Opts>> preds;
       for (auto &pred : predicates)
-        preds.push_back([&pred,&params](Opts opts) -> bool 
-            {return pred(std::make_pair(opts,params));});
-      analytics.emplace(std::make_pair(Input_Key(params), preds));
+        preds.push_back([&pred,&key](Opts opts) -> bool 
+            {return pred(std::make_pair(opts,key));});
+      analytics.emplace(std::make_pair(key, preds));
     }
-    return analytics.find(Input_Key(params))->second;
+    return analytics.find(key)->second;
   }
 
-  std::vector<Predicate<std::pair<Opts, Input_Params>>> predicates;
+  Analytics &get_analytics(Input_Params params) {
+    return get_analytics(Input_Key(params));
+  }
+
+  std::vector<Predicate<std::pair<Opts, Input_Key>>> predicates;
   std::map<Input_Key, Analytics> analytics;
   bool warm = false;
 };
@@ -183,11 +239,11 @@ Predicate<std::pair<GEMM_Options, GEMM_Inputs>>
 class GEMM_Planner : public Planning_System<GEMM_Inputs, GEMM_Key, GEMM_Options> {
   int tests_until_converge = 1;
 public:
-  GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> predicates, 
+  GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> predicates, 
                int tests_until_converge) : Planning_System(predicates), 
                                            tests_until_converge(tests_until_converge) {
   }
-  GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> predicates) 
+  GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> predicates) 
       : GEMM_Planner(predicates, 1) {}
   GEMM_Planner() : GEMM_Planner({}, 1) {}
 
@@ -243,14 +299,14 @@ public:
 
   size_t calculate_workspace(GEMM_Options opts, GEMM_Inputs params) {
     auto mult = form_operation(opts, params);
-    return mult.workspace_req();
+    return mult->workspace_req();
   }
 
   bool acceptable_plan(GEMM_Options opts, GEMM_Inputs params) {
     return calculate_workspace(opts, params) <= params.space.size();
   }
 
-  MatrixMult form_operation(GEMM_Options opts, GEMM_Inputs params) {
+  std::unique_ptr<MatrixOp> form_operation(GEMM_Options opts, GEMM_Inputs params) {
 
     std::unique_ptr<MatrixOp> A = std::make_unique<NoOp>(params.A);
     std::unique_ptr<MatrixOp> B = std::make_unique<NoOp>(params.B);
@@ -278,18 +334,33 @@ public:
       case NOTRANS:
         break;
     }
-    //if (opts.transc() != NOTRANS) {
-    //    std::unique_ptr<MatrixOp> scratch = std::make_unique<ScratchMatrix>(C, 32);
-    //    MatrixMult mult
 
-    //  case NOTRANS:
-    //    break;
-    //} else {
-    //}
-    MatrixMult mult(std::move(A), std::move(B), std::move(C), 
-                    params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
-                    params.alpha, params.beta);
-    return mult;
+    if (opts.transc() != NOTRANS) {
+        if (opts.transc() == PAD) {
+          auto scratch = std::make_unique<MatrixMultAlloc>(std::move(A), std::move(B),
+                                                           params.transa == CUBLAS_OP_T, 
+                                                           params.transb == CUBLAS_OP_T, 
+                                                           params.alpha, 32);
+
+          return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
+                                                    1.0, params.beta, false);
+        } else {
+          auto scratch = std::make_unique<MatrixMultAlloc>(std::move(B), std::move(A), 
+                                                           params.transb != CUBLAS_OP_T, 
+                                                           params.transa != CUBLAS_OP_T, 
+                                                           params.alpha, 32);
+
+          return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
+                                                    1.0, params.beta, true);
+        }
+    } else {
+      return std::make_unique<MatrixMult>(std::move(A), std::move(B), std::move(C), 
+                      params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
+                      params.alpha, params.beta);
+    }
+    //return std::make_unique<MatrixMult>(std::move(A), std::move(B), std::move(C), 
+    //                params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
+    //                params.alpha, params.beta);
   }
 
   double get_floprate(GEMM_Options opts, GEMM_Inputs params) {
@@ -325,13 +396,13 @@ private:
 
   void internal_execute(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
     auto mult = form_operation(opts, params);
-    if (mult.workspace_req() > params.space.size()) {
+    if (mult->workspace_req() > params.space.size()) {
       opts = degrade_plan(params);
       mult = std::move(form_operation(opts, params));
       //std::cout << "INSUFFICIENT WORKSPACE" << std::endl;
       //throw "Insufficient workspace";
     }
-    mult.execute(params.handle, Workspace(), params.space);
+    mult->execute(params.handle, Workspace(), params.space);
     // What to do if workspace is insufficient?
   }
 };

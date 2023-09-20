@@ -34,5 +34,7 @@ int main(int argc, char *argv[]) {
   // TODO check for duplicate dimensions when using smart measurement
   runner.run_problems(problems, reps);
   runner.sync();
-  runner.print_analytics();
+  //runner.print_analytics();
+  runner.print_top_n(3);
+  runner.print_bottom_n(3);
 }

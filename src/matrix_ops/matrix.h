@@ -11,6 +11,11 @@ struct MatrixDims {
   }
 
   const size_t footprint() const {return ld*n;}
+
+  friend std::ostream& operator<<(std::ostream& os, const MatrixDims dims) {
+    os << "(" << dims.m << "," << dims.n << "," << dims.ld << ")";
+    return os;
+  }
 };
 
 class Matrix {
