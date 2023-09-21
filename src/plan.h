@@ -45,14 +45,22 @@ public:
   Pad_Opt padb() const {return std::get<3>(*this);}
   Pad_Opt padc() const {return std::get<5>(*this);}
 
+  operator std::string() const {
+    std::stringstream ss;
+    ss << op_to_char(transa());
+    ss << op_to_char(transb());
+    ss << op_to_char(transc());
+    ss << op_to_char(pada());
+    ss << op_to_char(padb());
+    ss << op_to_char(padc());
+
+    std::string ret;
+    ss >> ret;
+    return ret;
+  }
+
   friend std::ostream& operator<<(std::ostream& os, const GEMM_Options opts) {
-    os << op_to_char(opts.transa());
-    os << op_to_char(opts.transb());
-    os << op_to_char(opts.transc());
-    os << op_to_char(opts.pada());
-    os << op_to_char(opts.padb());
-    os << op_to_char(opts.padc());
-  
+    os << std::string(opts); 
     return os;
   }
 };

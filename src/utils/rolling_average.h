@@ -30,6 +30,8 @@ public:
     for (auto &x : vals) std::cout << x << " ";
     std::cout << std::endl;
   }
+
+  const std::vector<double> &data() const {return vals;}
   
 private:
   size_t limit;

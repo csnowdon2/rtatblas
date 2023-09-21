@@ -17,7 +17,7 @@ TEST(API_Test, Elapsed_Time) {
   e1.record(nos);
   gpuAssert(cudaMemcpyAsync(y, x, 512, cudaMemcpyDeviceToDevice, nos));
   e2.record(nos);
-  cudaDeviceSynchronize();
+  gpuAssert(cudaDeviceSynchronize());
   std::cout << "Elapsed time " << Event::elapsed_time(e1,e2) << std::endl;
 
   SUCCEED();

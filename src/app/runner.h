@@ -1,5 +1,6 @@
 #pragma once
 #include "problemset.h"
+#include "json_planner.h"
 #include <planning_system.h>
 #include <iostream>
 #include <stack>
@@ -57,7 +58,7 @@ protected:
   GPU_Stack_Buffer mem;
   cublasHandle_t handle;
   Stream s;
-  GEMM_Planner planner;
+  JSON_Planner<GEMM_Planner> planner;
 
   //std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> make_preds() {
   //  std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> ret;
@@ -67,6 +68,8 @@ protected:
   //}
 
 public:
+  void json_output(std::ostream &os) { planner.json_output(os); }
+  void json_output(std::string filename) { planner.json_output(filename); }
   
 
   Runner() : mem((size_t)(((double)avail_gpu_mem())*0.9)), 
@@ -93,7 +96,7 @@ public:
     planner.dump_bottom_n(n);
   }
 
-  void run_problems(Problem_Set &problems, int reps) {
+  virtual void run_problems(Problem_Set &problems, int reps) {
   
     // TODO Use the existing workspace class rather than the Stack thing, 
     // it does the same thing but will be more elegant (if it works how 
@@ -132,11 +135,11 @@ public:
       }
       gpuAssert(cudaDeviceSynchronize());
   
+      mem.pop();
+      mem.pop();
+      mem.pop();
+
       problem.flop_rate = planner.get_floprate(inputs);
-  
-      mem.pop();
-      mem.pop();
-      mem.pop();
       problems.dump();
     }
   }
@@ -146,5 +149,30 @@ class SmartRunner : public Runner {
 public:
   GEMM_Options get_plan(GEMM_Inputs inputs) override {
     return planner.create_plan(inputs);
+  }
+};
+
+class RoundRobinRunner : public Runner {
+  int i=-1;
+public:
+  GEMM_Options get_plan(GEMM_Inputs inputs) override {
+    const auto ops = GEMM_Options::enumerate();
+    i = (i+1)%ops.size();
+    return ops[i];
+  }
+};
+
+class ExhaustiveRunner : public Runner {
+  GEMM_Options current_plan;
+public:
+  GEMM_Options get_plan(GEMM_Inputs inputs) override {
+    return current_plan;
+  }
+
+  void run_problems(Problem_Set &problems, int reps) override {
+    for (auto &plan : GEMM_Options::enumerate()) {
+      current_plan = plan;
+      Runner::run_problems(problems, reps);
+    }
   }
 };

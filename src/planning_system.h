@@ -13,6 +13,9 @@ using Predicate = std::function<bool(T)>;
 
 template<typename Input_Params, typename Input_Key, typename Opts>
 class Planning_System {
+  using Input_Type = Input_Params;
+  using Key_Type = Input_Key;
+  using Options_Type = Opts;
 public:
   Planning_System() = default;
   Planning_System(std::vector<Predicate<std::pair<Opts, Input_Key>>> predicates) 
@@ -180,11 +183,9 @@ struct GEMM_Inputs {
 struct GEMM_Key {
   cublasOperation_t transa; cublasOperation_t transb;
   int m; int k; int n;
-  //int lda; int ldb; int ldc;
 
   GEMM_Key(GEMM_Inputs i) : transa(i.transa), transb(i.transb), 
                             m(i.m()), n(i.n()), k(i.k()) {}
-  //                          lda(i.A.dims().ld), ldb(i.B.dims().ld), ldc(i.C.dims().ld) {}
 
   friend bool operator<(const GEMM_Key &l, const GEMM_Key &r) {
     if (l.transa < r.transa) return true;
@@ -201,12 +202,16 @@ struct GEMM_Key {
   }
 
   friend std::ostream& operator<<(std::ostream& os, const GEMM_Key& dt) {
-      os << (dt.transa == CUBLAS_OP_N ? "N" : "T")
-         << (dt.transb == CUBLAS_OP_N ? "N" : "T")
+      os << dt.op_str()
          << " m=" << dt.m
          << " n=" << dt.n
          << " k=" << dt.k;
       return os;
+  }
+
+  std::string op_str() const {
+     return std::string(transa == CUBLAS_OP_N ? "N" : "T")
+         +  std::string(transb == CUBLAS_OP_N ? "N" : "T");
   }
 };
 
@@ -322,41 +327,36 @@ public:
     bool padc = opts.padc() == PAD;
 
     if (transa) 
-      params.transa = (params.transa == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+      params.transa = switch_op(params.transa);
     if (transa || pada)
       A = std::make_unique<MatrixMove>(std::move(A), 1.0, transa, pada ? 32 : 1);
 
     if (transb)
-      params.transb = (params.transb == CUBLAS_OP_N) ? CUBLAS_OP_T : CUBLAS_OP_N;
+      params.transb = switch_op(params.transb);
     if (transb || padb)
       B = std::make_unique<MatrixMove>(std::move(B), 1.0, transb, padb ? 32 : 1);
 
-    if (transc || padc) {
-        if (!transc) {
-          auto scratch = std::make_unique<MatrixMultAlloc>(std::move(A), std::move(B),
-                                                           params.transa == CUBLAS_OP_T, 
-                                                           params.transb == CUBLAS_OP_T, 
-                                                           params.alpha, padc ? 32 : 1);
+    if (transc) {
+      auto scratch = std::make_unique<MatrixMultAlloc>(std::move(B), std::move(A), 
+                                                       params.transb != CUBLAS_OP_T, 
+                                                       params.transa != CUBLAS_OP_T, 
+                                                       params.alpha, padc ? 32 : 1);
 
-          return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
-                                                    1.0, params.beta, false);
-        } else {
-          auto scratch = std::make_unique<MatrixMultAlloc>(std::move(B), std::move(A), 
-                                                           params.transb != CUBLAS_OP_T, 
-                                                           params.transa != CUBLAS_OP_T, 
-                                                           params.alpha, padc ? 32 : 1);
+      return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
+                                                1.0, params.beta, true);
+    } else if (padc) {
+      auto scratch = std::make_unique<MatrixMultAlloc>(std::move(A), std::move(B),
+                                                       params.transa == CUBLAS_OP_T, 
+                                                       params.transb == CUBLAS_OP_T, 
+                                                       params.alpha, 32);
 
-          return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
-                                                    1.0, params.beta, true);
-        }
+      return std::make_unique<MatrixAccumulate>(std::move(scratch), std::move(C), 
+                                                1.0, params.beta, false);
     } else {
       return std::make_unique<MatrixMult>(std::move(A), std::move(B), std::move(C), 
                       params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
                       params.alpha, params.beta);
     }
-    //return std::make_unique<MatrixMult>(std::move(A), std::move(B), std::move(C), 
-    //                params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
-    //                params.alpha, params.beta);
   }
 
   double get_floprate(GEMM_Options opts, GEMM_Inputs params) {

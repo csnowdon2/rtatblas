@@ -2,16 +2,6 @@
 #include "runner.h"
 #include <iostream>
 
-class RoundRobinRunner : public Runner {
-  int i=-1;
-public:
-  GEMM_Options get_plan(GEMM_Inputs inputs) override {
-    const auto ops = GEMM_Options::enumerate();
-    i = (i+1)%ops.size();
-    return ops[i];
-  }
-};
-
 int main(int argc, char *argv[]) {
   if (argc != 7) { 
     std::cout << "Expected command line args: m k n opA opB reps" << std::endl;
@@ -37,5 +27,6 @@ int main(int argc, char *argv[]) {
   //runner.print_analytics();
   int N = GEMM_Options::enumerate().size();
   runner.print_top_n(N);
+  runner.json_output(std::cout);
   //runner.print_bottom_n(N);
 }

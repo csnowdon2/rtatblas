@@ -57,6 +57,8 @@ public:
 
   void print() {avg.print();}
 
+  std::vector<double> data() const {return avg.data();}
+
   bool synchronous;
 private:
   std::vector<Event_Timer_Buffer> event_timers;

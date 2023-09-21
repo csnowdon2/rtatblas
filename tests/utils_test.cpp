@@ -45,7 +45,7 @@ TEST(Event_Timer_Test, Three_Intervals) {
 
 TEST(Event_Timer_Test, Multi_GPU) {
   int ndevices;
-  cudaGetDeviceCount(&ndevices);
+  gpuAssert(cudaGetDeviceCount(&ndevices));
   int interval = 15;
 
   std::vector<Event_Timer_Buffer> timer_buffers;
