@@ -2,6 +2,7 @@
 #include <variant>
 #include <vector>
 #include <map>
+#include <sstream>
 #ifdef CUDA
 #include <cublas_v2.h>
 #else
@@ -22,6 +23,7 @@ char op_to_char(BLAS_Op op) {
   switch (op) {
     case TRANS: return 'T';
     case NOTRANS: return 'N';
+    default: throw;
   }
 }
 
@@ -29,6 +31,7 @@ char op_to_char(Pad_Op op) {
   switch (op) {
     case PAD: return 'P';
     case NOPAD: return 'N';
+    default: throw;
   }
 }
 

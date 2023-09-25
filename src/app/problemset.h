@@ -2,6 +2,7 @@
 #include <gpu-api.h>
 #include <set>
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <vector>
 #include <limits>

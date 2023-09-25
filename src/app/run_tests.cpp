@@ -1,5 +1,6 @@
 #include "problemset.h"
 #include "runner.h"
+#include <sstream>
 #include <iostream>
 
 int main(int argc, char *argv[]) {

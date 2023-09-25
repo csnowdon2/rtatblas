@@ -60,7 +60,7 @@ class Random_Problem_Generator {
 public:
   Random_Problem_Generator(int seed) : rng(seed) {
     size_t total, free;
-    if (hipMemGetInfo(&free, &total)) {
+    if (cudaMemGetInfo(&free, &total)) {
       std::cout << "NO CONNECTED GPU" << std::endl;
       throw;
     }
