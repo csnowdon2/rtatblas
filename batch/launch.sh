@@ -17,4 +17,8 @@ if [ -z "$DIR" ]; then
 fi
 
 echo "Running input=" $INPUT " exe=" $EXE
-sbatch --export=ALL,DIR="${DIR}",INPUT="${INPUT}",EXE="${EXE}" slurm_job.sh 
+if which sbatch &> /dev/null; then 
+  sbatch --export=ALL,DIR="${DIR}",INPUT="${INPUT}",EXE="${EXE}" slurm_job.sh 
+elif which qsub &> /dev/null; then
+  qsub -v DIR="${DIR}",INPUT="${INPUT}",EXE="${EXE}" pbs_job.sh 
+fi
