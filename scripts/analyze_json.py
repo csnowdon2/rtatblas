@@ -67,6 +67,7 @@ for subdir, dirs, files in os.walk(directory):
       # Calculate best options for each shape
       idx = op_df.groupby(level=columns[:5])['ms'].transform(min) == op_df['ms']
       print("Mean of best", hmean(op_df[idx]['tflops']))
+      print("Baseline    ", hmean(op_df.unstack(level=opcols)[('tflops', 'N', 'N', 'N', 'N', 'N', 'N')]))
 
       # Find options with best coverage
       best_opts = greedy_select(op_df,4)

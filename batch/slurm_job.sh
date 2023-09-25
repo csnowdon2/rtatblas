@@ -15,8 +15,6 @@ if [ ! -f "$EXE" ]; then
   exit 1
 fi
 
-RUN=`readlink -f run.sh`
+RUN=`readlink -f run-experiment.sh`
 
-DIR=exhaustive/${SLURM_JOB_NAME}${SLURM_JOBID}
-mkdir $DIR && cd $DIR
-srun -N 1 -n 1 -c 8 --gpus-per-node=1 --gpus-per-task=1 $RUN $INPUT $EXE
+srun -N 1 -n 1 -c 8 --gpus-per-node=1 --gpus-per-task=1 $RUN $EXE $DIR $INPUT
