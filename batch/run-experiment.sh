@@ -43,6 +43,7 @@ fi
 
 # Run inputs
 INPUTS=`find . -type f -iname "*${SUFFIX}"`
+echo "Running inputs" ${INPUTS}
 for FILE in $INPUTS
 do
  echo $EXE $FILE

@@ -40,8 +40,8 @@ def greedy_select(df, n):
     print("Best group of", i+1, " = ", best, current_options)
   return current_options
 
+rows = []
 for subdir, dirs, files in os.walk(directory):
-  rows = []
   for file in files:
     if file.split('.')[-1][0] == 'o':
       data = []
@@ -54,43 +54,43 @@ for subdir, dirs, files in os.walk(directory):
           rowext = list(opts) + [o['results'][opts]['mean']]
           rows.append(rowbase+rowext)
 
-  if rows:
-    print("DIR", subdir)
-    # Transform data, add tflops
-    df = pd.DataFrame(rows, columns=columns)
-    df['tflops'] = df['m']*df['k']*df['n']*2/(df['ms']/1000)/1e12
-    for (opA, opB) in itertools.product(['N','T'], repeat=2):
-      print("OPS", opA, opB)
-      op_df = df[(df['opA'] == opA) & (df['opB'] == opB)]
-      op_df = op_df.set_index(columns[:11])
+if rows:
+  print("DIR", subdir)
+  # Transform data, add tflops
+  df = pd.DataFrame(rows, columns=columns)
+  df['tflops'] = df['m']*df['k']*df['n']*2/(df['ms']/1000)/1e12
+  for (opA, opB) in itertools.product(['N','T'], repeat=2):
+    print("OPS", opA, opB)
+    op_df = df[(df['opA'] == opA) & (df['opB'] == opB)]
+    op_df = op_df.set_index(columns[:11])
 
-      # Calculate best options for each shape
-      idx = op_df.groupby(level=columns[:5])['ms'].transform(min) == op_df['ms']
-      print("Mean of best", hmean(op_df[idx]['tflops']))
-      print("Baseline    ", hmean(op_df.unstack(level=opcols)[('tflops', 'N', 'N', 'N', 'N', 'N', 'N')]))
+    # Calculate best options for each shape
+    idx = op_df.groupby(level=columns[:5])['ms'].transform(min) == op_df['ms']
+    print("Mean of best", hmean(op_df[idx]['tflops']))
+    print("Baseline    ", hmean(op_df.unstack(level=opcols)[('tflops', 'N', 'N', 'N', 'N', 'N', 'N')]))
 
-      # Find options with best coverage
-      best_opts = greedy_select(op_df,4)
-      print()
-    print() 
-      # Exhaustive selection
-      #best = 0
-      #best_opts = None
-      #for i in range(1,4):
-      #  for options in itertools.combinations(ix,i):
-      #    good = goodness(df, options)
-      #    if good > best:
-      #      best = good
-      #      best_opts = options
-      #  print("Best group of", i, " = ", best, best_opts)
+    # Find options with best coverage
+    best_opts = greedy_select(op_df,4)
+    print()
+  print() 
+    # Exhaustive selection
+    #best = 0
+    #best_opts = None
+    #for i in range(1,4):
+    #  for options in itertools.combinations(ix,i):
+    #    good = goodness(df, options)
+    #    if good > best:
+    #      best = good
+    #      best_opts = options
+    #  print("Best group of", i, " = ", best, best_opts)
 
-      # Sort options by performance
-      #perf_by_opts = dict()
-      #for options in ix:
-      #  perf_by_opts[options] = df.unstack(level=opcols)[('tflops', *options)].mean()
-      #print([(a,perf_by_opts[a]) for a in sorted(list(perf_by_opts),key = lambda x:perf_by_opts[x], reverse=True)])
+    # Sort options by performance
+    #perf_by_opts = dict()
+    #for options in ix:
+    #  perf_by_opts[options] = df.unstack(level=opcols)[('tflops', *options)].mean()
+    #print([(a,perf_by_opts[a]) for a in sorted(list(perf_by_opts),key = lambda x:perf_by_opts[x], reverse=True)])
 
-      #print(df.groupby(level=columns[:5]).apply(max))
-      #print(df[df[('ms','N')] > 1.05*df[('ms','T')]])
+    #print(df.groupby(level=columns[:5]).apply(max))
+    #print(df[df[('ms','N')] > 1.05*df[('ms','T')]])
 
 

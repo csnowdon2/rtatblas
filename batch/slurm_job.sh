@@ -5,11 +5,8 @@
 #SBATCH --partition=gpu-dev
 #SBATCH --account=director2178-gpu
 #SBATCH --time=04:00:00
+#SBATCH -o ./logs/output.%a.out
 
-if [ ! -f "$INPUT" ]; then
-  echo "INPUT FILE \"$INPUT\" DOES NOT EXIST"
-  exit 1
-fi
 if [ ! -f "$EXE" ]; then
   echo "EXE FILE \"$EXE\" DOES NOT EXIST"
   exit 1
