@@ -29,7 +29,7 @@ def goodness(df, opts):
 def greedy_select(df, ix, n):
   current_options = []
   possibilities = set(ix)
-  for i in range(0,n):
+  for i in range(0, len(possibilities)):
     best = 0
     best_op = None
     for op in possibilities:
@@ -37,6 +37,12 @@ def greedy_select(df, ix, n):
       if good > best:
         best = good
         best_op = op
+
+    if current_options:
+      improvement = goodness(df, current_options + [best_op])/goodness(df, current_options)
+      if improvement < 1.01:
+        print(f"Insufficient improvement of {(improvement-1)*100.0:.2f}%")
+        return current_options
     possibilities.remove(best_op)
     current_options.append(best_op)
     print("Best group of", i+1, " = ", best, current_options)

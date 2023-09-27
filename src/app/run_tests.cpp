@@ -19,4 +19,5 @@ int main(int argc, char *argv[]) {
   Problem_Set problems(filename);
   // TODO check for duplicate dimensions when using smart measurement
   runner.run_problems(problems, reps);
+  runner.json_output(filename + ".o");
 }

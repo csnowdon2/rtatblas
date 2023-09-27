@@ -1,7 +1,7 @@
 #!/bin/bash
 export INPUT=`readlink -e $1`
 export DIR=$2
-export EXE=`readlink -e ../build/src/app/run_tests_exhaustive`
+export EXE=`readlink -e $3`
 
 ROOT=`pwd`
 
