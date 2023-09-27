@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <ios>
 #ifdef CUDA
 #include <cublas_v2.h>
 #else
@@ -31,6 +32,22 @@ char op_to_char(Pad_Op op) {
   switch (op) {
     case PAD: return 'P';
     case NOPAD: return 'N';
+    default: throw;
+  }
+}
+
+BLAS_Op char_to_blas_op(char c) {
+  switch (c) {
+    case 'N': return NOTRANS;
+    case 'T': return TRANS;
+    default: throw;
+  }
+}
+
+Pad_Op char_to_pad_op(char c) {
+  switch (c) {
+    case 'N': return NOPAD;
+    case 'P': return PAD;
     default: throw;
   }
 }
@@ -65,6 +82,24 @@ public:
   friend std::ostream& operator<<(std::ostream& os, const GEMM_Options opts) {
     os << std::string(opts); 
     return os;
+  }
+
+  friend std::istream& operator>>(std::istream &is, GEMM_Options &opts) {
+    std::string s;
+    is >> s;
+    if (s.size() != 6) {
+      is.setstate(std::ios::failbit);
+      return is;
+    }
+      
+    std::get<0>(opts) = char_to_blas_op(s[0]);
+    std::get<1>(opts) = char_to_pad_op(s[3]);
+    std::get<2>(opts) = char_to_blas_op(s[1]);
+    std::get<3>(opts) = char_to_pad_op(s[4]);
+    std::get<4>(opts) = char_to_blas_op(s[2]);
+    std::get<5>(opts) = char_to_pad_op(s[5]);
+
+    return is;
   }
 };
 

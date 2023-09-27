@@ -76,6 +76,9 @@ public:
              planner({}, 1){
     cublasCreate(&handle);
     cublasSetStream(handle,s);
+
+    if (const char* predfilename = std::getenv("PREDFILE")) 
+      load_predicates(std::string(predfilename));
   }
 
   virtual ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
@@ -94,6 +97,16 @@ public:
 
   void print_bottom_n(int n) {
     planner.dump_bottom_n(n);
+  }
+
+  void load_predicates(std::string filename) {
+    std::cout << "LOADING PREDFILE " << filename << std::endl;
+    std::ifstream is(filename);
+    if (!is.good()) {
+      std::cout << "File failed to open" << std::endl;
+      throw;
+    }
+    planner.load_predicates(is);
   }
 
   virtual void run_problems(Problem_Set &problems, int reps) {
@@ -124,12 +137,13 @@ public:
           std::cout << "Insufficient memory for input " << problem << ", skipping" << std::endl;
           continue;
         }
-        //std::cout << "Running " << plan << std::endl;
+        std::cout << "Running " << plan << std::endl;
 
         size_t ws = planner.calculate_workspace(plan,inputs);
         inputs.space = Workspace(mem.alloc(ws), ws);
 
-        if (i == 0) planner.warmup(plan,inputs,s);
+        if (i == 0) {planner.warmup(plan,inputs,s); gpuAssert(cudaDeviceSynchronize());}
+        //planner.warmup(plan,inputs,s);
         planner.execute(plan, inputs, s);
         mem.pop();
       }

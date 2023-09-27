@@ -47,6 +47,9 @@ public:
 
   T val;
 
+  bool operator==(const Option &other) const {return val == other.val;}
+  bool operator==(const T &other) const {return val == other;}
+
   friend bool operator<(const Option &l, const Option &r) { 
     return l.val < r.val;
   }

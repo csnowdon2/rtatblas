@@ -17,7 +17,8 @@ int main(int argc, char *argv[]) {
 
   int reps = atoi(argv[6]);
 
-  RoundRobinRunner runner;
+  //RoundRobinRunner runner;
+  SmartRunner runner;
 
   Problem_Set problems;
   problems.add_problem(p);

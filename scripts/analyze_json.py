@@ -8,8 +8,10 @@ directory=sys.argv[1]
 columns=['m','k','n','opA','opB','tA','tB','tC','pA','pB','pC','ms']
 opcols = columns[5:11]
 
-ix = [(*x,*y) for x in itertools.product(["N","T"],repeat=3) 
-              for y in itertools.product(["N","P"],repeat=3)]
+ix_pad = [(*x,*y) for x in itertools.product(["N","T"],repeat=3) 
+                  for y in itertools.product(["N","P"],repeat=3)]
+ix_nopad = [(*x,*y) for x in itertools.product(["N","T"],repeat=3)
+                    for y in itertools.product(["N"],repeat=3)]
 
   
 def hmean(ser):
@@ -24,7 +26,7 @@ def goodness(df, opts):
   data['best'] = data.max(axis=1)
   return hmean(data['best'])
 
-def greedy_select(df, n):
+def greedy_select(df, ix, n):
   current_options = []
   possibilities = set(ix)
   for i in range(0,n):
@@ -59,6 +61,8 @@ if rows:
   # Transform data, add tflops
   df = pd.DataFrame(rows, columns=columns)
   df['tflops'] = df['m']*df['k']*df['n']*2/(df['ms']/1000)/1e12
+
+  enabled_options = dict()
   for (opA, opB) in itertools.product(['N','T'], repeat=2):
     print("OPS", opA, opB)
     op_df = df[(df['opA'] == opA) & (df['opB'] == opB)]
@@ -70,27 +74,14 @@ if rows:
     print("Baseline    ", hmean(op_df.unstack(level=opcols)[('tflops', 'N', 'N', 'N', 'N', 'N', 'N')]))
 
     # Find options with best coverage
-    best_opts = greedy_select(op_df,4)
+    print("With pad:")
+    best_opts = greedy_select(op_df,ix_pad,4)
+    #print("Without pad:")
+    #best_opts = greedy_select(op_df,ix_nopad,4)
     print()
-  print() 
-    # Exhaustive selection
-    #best = 0
-    #best_opts = None
-    #for i in range(1,4):
-    #  for options in itertools.combinations(ix,i):
-    #    good = goodness(df, options)
-    #    if good > best:
-    #      best = good
-    #      best_opts = options
-    #  print("Best group of", i, " = ", best, best_opts)
 
-    # Sort options by performance
-    #perf_by_opts = dict()
-    #for options in ix:
-    #  perf_by_opts[options] = df.unstack(level=opcols)[('tflops', *options)].mean()
-    #print([(a,perf_by_opts[a]) for a in sorted(list(perf_by_opts),key = lambda x:perf_by_opts[x], reverse=True)])
-
-    #print(df.groupby(level=columns[:5]).apply(max))
-    #print(df[df[('ms','N')] > 1.05*df[('ms','T')]])
-
-
+    enabled_options[(opA,opB)] = best_opts
+  print("Predicates:")
+  for key in enabled_options:
+    for opts in enabled_options[key]:
+      print(''.join(list(key)), ''.join(list(opts)))

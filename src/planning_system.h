@@ -1,15 +1,17 @@
 #pragma once
 #include <functional>
-#include "matrix_ops/matrixop.h"
+#include <numeric>
 #include <map>
+#include <iostream>
+
 #include <gpu-api.h>
 #include <performance_record.h>
-#include <iostream>
+
+#include "matrix_ops/matrixop.h"
 #include "options.h"
 #include "plan.h"
+#include "predicates.h"
 
-template<typename T>
-using Predicate = std::function<bool(T)>;
 
 template<typename Input_Params, typename Input_Key, typename Opts>
 class Planning_System {
@@ -29,7 +31,7 @@ public:
 
   // Don't do any planning, just take a plan and go with it, 
   // measuring performance on the way.
-  void execute(Opts opts, Input_Params params, Stream s) {
+  virtual void execute(Opts opts, Input_Params params, Stream s) {
 
     if (!warm) {
       warmup(opts, params, s);
@@ -43,7 +45,7 @@ public:
     }, s);
   }
 
-  void warmup(Opts opts, Input_Params params, Stream s) {
+  virtual void warmup(Opts opts, Input_Params params, Stream s) {
 
     Analytics &an = get_analytics(params);
 
@@ -70,7 +72,7 @@ public:
       auto top = top_n(key, n);
 
       std::cout << key << std::endl;
-      for (int i = 0; i < n; i++) {
+      for (int i = 0; i < top.size(); i++) {
         std::cout << i+1 << " " << top[i] << " " << an.performance_data[top[i]].get_time() << std::endl;
       }
     }
@@ -82,7 +84,7 @@ public:
       auto top = bottom_n(key, n);
 
       std::cout << key << std::endl;
-      for (int i = 0; i < n; i++) {
+      for (int i = 0; i < top.size(); i++) {
         std::cout << i+1 << " " << top[i] << " " << an.performance_data[top[i]].get_time() << std::endl;
       }
     }
@@ -91,7 +93,7 @@ public:
   std::vector<Opts> get_n(Input_Key key, int n, std::function<bool(float,float)> cmp) {
     auto &data = get_analytics(key).performance_data;
 
-    if (n < data.size()) n = data.size();
+    if (n > data.size()) n = data.size();
     std::vector<Opts> top(n);
 
     std::vector<Opts> keys;
@@ -132,6 +134,11 @@ protected:
         }
         if (good)
           performance_data.emplace(std::make_pair(opts, Performance_Record(true)));
+      }
+
+      if (performance_data.size() == 0) {
+        std::cout << "WARNING: no valid options found for analytics, using default behaviour" << std::endl;
+        performance_data.emplace(std::make_pair(Opts::enumerate()[0], Performance_Record(true)));
       }
     }
     Analytics() : Analytics({}) {}
@@ -186,6 +193,9 @@ struct GEMM_Key {
 
   GEMM_Key(GEMM_Inputs i) : transa(i.transa), transb(i.transb), 
                             m(i.m()), n(i.n()), k(i.k()) {}
+  GEMM_Key(cublasOperation_t transa, cublasOperation_t transb,
+           int m, int k, int n) : transa(transa), transb(transb), 
+                                  m(m), n(n), k(k) {}
 
   friend bool operator<(const GEMM_Key &l, const GEMM_Key &r) {
     if (l.transa < r.transa) return true;
@@ -226,9 +236,9 @@ cublasOperation_t switch_op(cublasOperation_t op) {
 }
 
 
-Predicate<std::pair<GEMM_Options, GEMM_Inputs>>
+Predicate<std::pair<GEMM_Options, GEMM_Key>>
     exclude_option(cublasOperation_t opA, cublasOperation_t opB) {
-  return [opA, opB](std::pair<GEMM_Options, GEMM_Inputs> p) -> bool {
+  return [opA, opB](std::pair<GEMM_Options, GEMM_Key> p) -> bool {
     auto &opts = p.first;
     auto &params = p.second;
     auto opA_ = params.transa;
@@ -238,6 +248,17 @@ Predicate<std::pair<GEMM_Options, GEMM_Inputs>>
     if (opts.transb() == TRANS) opB_ = switch_op(opB_);
 
     return !(opA == opA_ && opB == opB_);
+  };
+}
+
+// Predicate which succeeds only for problems which match the given
+// options and transposes
+Predicate<std::pair<GEMM_Options, GEMM_Key>>
+    permit_option(GEMM_Options opts, cublasOperation_t opa, cublasOperation_t opb) {
+  return [opts, opa, opb](std::pair<GEMM_Options, GEMM_Key> p) -> bool {
+    return (p.first == opts) && 
+           (opa == p.second.transa) && 
+           (opb == p.second.transb);
   };
 }
 
@@ -251,6 +272,58 @@ public:
   GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> predicates) 
       : GEMM_Planner(predicates, 1) {}
   GEMM_Planner() : GEMM_Planner({}, 1) {}
+
+  std::istream& load_predicates(std::istream &is) {
+    std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> preds;
+    std::string s;
+
+    while (std::getline(is,s)) {
+      std::stringstream ss(s);
+
+      std::string ops;
+      ss >> ops;
+
+      GEMM_Options opts;
+      ss >> opts;
+      if (ops.size() != 2 || ss.fail()) {
+        std::cout << "Parse failure on line: " << s << ", size " << s.size() << std::endl;
+        throw;
+      }
+      cublasOperation_t opA = ops[0] == 'T' ? CUBLAS_OP_T : CUBLAS_OP_N;
+      cublasOperation_t opB = ops[1] == 'T' ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+      preds.push_back(permit_option(opts, opA, opB));
+    } 
+    predicates = {disjunction(preds)};
+
+    {
+      std::vector<cublasOperation_t> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
+
+      for (auto opts : GEMM_Options::enumerate()) {
+        for (auto &opA : ops) {
+          for (auto &opB : ops) {
+            GEMM_Key k(opA,opB,1,1,1);
+
+            bool good = true;
+            for (auto &pred : predicates) 
+              good = good && pred(std::make_pair(opts,k));
+
+            if (good) {
+              std::cout << "Permitted: " << ((opA == CUBLAS_OP_N) ? "N" : "T")
+                                         << ((opB == CUBLAS_OP_N) ? "N" : "T") << " "
+                                         << op_to_char(std::get<0>(opts)) 
+                                         << op_to_char(std::get<2>(opts)) 
+                                         << op_to_char(std::get<4>(opts)) 
+                                         << op_to_char(std::get<1>(opts)) 
+                                         << op_to_char(std::get<3>(opts)) 
+                                         << op_to_char(std::get<5>(opts)) << std::endl;
+            }
+          }
+        }
+      }
+    }
+    return is;
+  }
 
   GEMM_Options create_plan(GEMM_Inputs params) override {
     // TODO actually come up with a method to determine a plan
@@ -388,6 +461,28 @@ public:
     return tflops/secs;
   }
 
+  // Hack workaround, seems we need to warm-up exhaustively. Can have 
+  // an NN run fine followed by a TT with 2 second overhead, looks like 
+  // warming up dgeam fixes this.
+  void warmup(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
+    size_t n = 8;
+    double *A, *B, *C;
+    gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
+    gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
+    gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
+
+    std::vector<cublasOperation_t> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
+
+    for (auto &opA : ops) {
+      for (auto &opB : ops) {
+        double alpha = 1.0;
+        double beta = 0.0;
+        cublasDgemm(params.handle, opA, opB, n,n,n, &alpha, A,n,B,n, &beta, C,n);
+        cublasDgeam(params.handle, opA, opB, n,n, &alpha, A, n, &beta, B, n, C, n);
+      }
+    }
+    gpuAssert(cudaDeviceSynchronize());
+  }
 private:
 
   void internal_execute(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
@@ -401,4 +496,7 @@ private:
     mult->execute(params.handle, Workspace(), params.space);
     // What to do if workspace is insufficient?
   }
+
+  bool warm_id = false;
+  bool warm_other = false;
 };
