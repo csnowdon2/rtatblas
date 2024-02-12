@@ -2,6 +2,7 @@
 // There should be no inheritance relationship between Matrix and MatrixOp.
 // Accessing a MatrixOp requires a handle, accessing a Matrix does not.
 
+namespace rtat {
 
 struct MatrixDims {
   size_t m, n, ld;
@@ -10,7 +11,7 @@ struct MatrixDims {
     if (ld < m) throw "ld < m in MatrixDims";
   }
 
-  const size_t footprint() const {return ld*n;}
+  size_t footprint() const {return ld*n;}
 
   friend std::ostream& operator<<(std::ostream& os, const MatrixDims dims) {
     os << "(" << dims.m << "," << dims.n << "," << dims.ld << ")";
@@ -31,9 +32,11 @@ public:
   Matrix(Workspace home, size_t m, size_t n, size_t ld) 
       : Matrix(home, MatrixDims(m,n,ld)) {}
 
-  const size_t footprint() const {return dimensions.footprint();}
+  size_t footprint() const {return dimensions.footprint();}
 
   const MatrixDims dims() const {return dimensions;}
 
-  double* const ptr() {return home.ptr;}
+  double* ptr() {return home.ptr;}
 };
+
+}

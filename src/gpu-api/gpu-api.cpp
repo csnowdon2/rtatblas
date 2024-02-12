@@ -1,5 +1,7 @@
 #include "gpu-api.h"
 
+namespace rtat {
+
 class Non_Owning_Stream : public Raw_Stream {
 public:
   Non_Owning_Stream(cudaStream_t stream_) { stream = stream_; }
@@ -56,4 +58,5 @@ float Event::elapsed_time(Event start, Event end) {
   if (err != cudaSuccess)
     ms = NAN;
   return ms;
+}
 }

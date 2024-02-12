@@ -2,6 +2,8 @@
 #include "runner.h"
 #include <iostream>
 
+using namespace rtat;
+
 int main(int argc, char *argv[]) {
   if (argc != 7) { 
     std::cout << "Expected command line args: m k n opA opB reps" << std::endl;

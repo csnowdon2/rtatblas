@@ -3,6 +3,8 @@
 #include "rolling_average.h"
 #include <vector>
 
+namespace rtat {
+
 class Performance_Record {
 public:
   Performance_Record(bool synchronous = false) : synchronous(synchronous) {
@@ -64,3 +66,5 @@ private:
   std::vector<Event_Timer_Buffer> event_timers;
   Detailed_Average avg;
 };
+
+}

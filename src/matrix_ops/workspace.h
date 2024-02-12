@@ -1,6 +1,8 @@
 #include <cstdlib>
 // Captures user-provided workspace. Non-owning sized pointer.
 
+namespace rtat {
+
 class Matrix;
 
 class Workspace {
@@ -10,7 +12,7 @@ protected:
   double* ptr;
 public:
 
-  Workspace(double* ptr, size_t count) : ptr(ptr), count(count) {}
+  Workspace(double* ptr, size_t count) : count(count), ptr(ptr) {}
   Workspace() : Workspace(nullptr, 0) {}
   virtual ~Workspace() = default;
 
@@ -34,3 +36,5 @@ public:
 
   size_t size() {return count;}
 };
+
+}

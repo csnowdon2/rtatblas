@@ -3,6 +3,8 @@
 #include <sstream>
 #include <iostream>
 
+using namespace rtat;
+
 int main(int argc, char *argv[]) {
   if (argc < 2 || argc > 3) { 
     std::cout << "Expected command line args: filename [reps]" << std::endl;

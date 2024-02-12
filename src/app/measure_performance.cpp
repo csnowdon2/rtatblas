@@ -2,6 +2,8 @@
 #include <planning_system.h>
 #include <string>
 
+using namespace rtat;
+
 cublasOperation_t read_op(std::string op) {
   if (op == "N") return CUBLAS_OP_N;
   if (op == "T") return CUBLAS_OP_T;

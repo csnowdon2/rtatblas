@@ -3,6 +3,8 @@
 #include <iostream>
 #include <random>
 
+using namespace rtat;
+
 class Random_Problem_Generator {
   size_t footprint_lb;
   size_t footprint_ub;

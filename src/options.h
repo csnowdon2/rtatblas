@@ -2,6 +2,8 @@
 #include <vector>
 #include <tuple>
 
+namespace rtat {
+
 template<typename... Args>
 struct Enumerate;
 
@@ -67,3 +69,5 @@ struct Options : public std::tuple<Ops...> {
     return std::vector<Options>(ops.begin(), ops.end());
   }
 };
+
+}

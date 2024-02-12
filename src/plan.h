@@ -11,6 +11,7 @@
 #endif
 #include "options.h"
 
+namespace rtat {
 
 enum BLAS_Op {
   NOTRANS, TRANS
@@ -103,3 +104,4 @@ public:
   }
 };
 
+}
