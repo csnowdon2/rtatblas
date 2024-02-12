@@ -4,7 +4,7 @@
 
 namespace rtat {
 
-nlohmann::json jsonify(GEMM_Key key) {
+inline nlohmann::json jsonify(GEMM_Key key) {
   nlohmann::json ret;
   ret["m"] = key.m;
   ret["k"] = key.k;

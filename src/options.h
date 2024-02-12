@@ -42,7 +42,7 @@ public:
   static constexpr std::array<T, sizeof...(VALS)> vals = { { VALS... } };
   static constexpr int N = sizeof...(VALS); 
 
-  Option() {}
+  Option() : val() {}
   Option(T val) : val(val) {}
 
   operator T() {return val;}

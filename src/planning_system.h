@@ -225,7 +225,7 @@ struct GEMM_Key {
   }
 };
 
-cublasOperation_t switch_op(cublasOperation_t op) {
+inline cublasOperation_t switch_op(cublasOperation_t op) {
   switch (op) {
     case CUBLAS_OP_N: return CUBLAS_OP_T;
     case CUBLAS_OP_T: return CUBLAS_OP_N;
@@ -236,7 +236,7 @@ cublasOperation_t switch_op(cublasOperation_t op) {
 }
 
 
-Predicate<std::pair<GEMM_Options, GEMM_Key>>
+inline Predicate<std::pair<GEMM_Options, GEMM_Key>>
     exclude_option(cublasOperation_t opA, cublasOperation_t opB) {
   return [opA, opB](std::pair<GEMM_Options, GEMM_Key> p) -> bool {
     auto &opts = p.first;
@@ -253,7 +253,7 @@ Predicate<std::pair<GEMM_Options, GEMM_Key>>
 
 // Predicate which succeeds only for problems which match the given
 // options and transposes
-Predicate<std::pair<GEMM_Options, GEMM_Key>>
+inline Predicate<std::pair<GEMM_Options, GEMM_Key>>
     permit_option(GEMM_Options opts, cublasOperation_t opa, cublasOperation_t opb) {
   return [opts, opa, opb](std::pair<GEMM_Options, GEMM_Key> p) -> bool {
     return (p.first == opts) && 

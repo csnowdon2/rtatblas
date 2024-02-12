@@ -6,6 +6,7 @@
 #include "../src/planning_system.h"
 #include <string>
 
+using namespace rtat;
 
 using Test_Op1 = Option<int, 16, 32, 64>;
 using Test_Op2 = Option<bool, true, false>;

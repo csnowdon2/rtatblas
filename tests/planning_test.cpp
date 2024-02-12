@@ -57,7 +57,7 @@ TEST_F(Planning_Test, Hello) {
   ManagedWorkspace space(1024);
   for (int j=0; j<2; j++) {
     size_t reps = 100;
-    for (int i=0; i<reps; i++) {
+    for (size_t i=0; i<reps; i++) {
       GEMM_Options plan = planner.create_plan(inputs);
 
       size_t req = planner.calculate_workspace(plan, inputs)*sizeof(double);
