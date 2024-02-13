@@ -2,6 +2,8 @@
 #include <vector>
 #include <tuple>
 
+namespace rtat {
+
 template<typename... Args>
 struct Enumerate;
 
@@ -40,7 +42,7 @@ public:
   static constexpr std::array<T, sizeof...(VALS)> vals = { { VALS... } };
   static constexpr int N = sizeof...(VALS); 
 
-  Option() {}
+  Option() : val() {}
   Option(T val) : val(val) {}
 
   operator T() {return val;}
@@ -67,3 +69,5 @@ struct Options : public std::tuple<Ops...> {
     return std::vector<Options>(ops.begin(), ops.end());
   }
 };
+
+}

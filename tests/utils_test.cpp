@@ -7,6 +7,8 @@
 #include <event_timer_buffer.h>
 #include <vector>
 
+using namespace rtat;
+
 TEST(Rolling_Average_Test, Calculation) {
   std::vector<double> xs = {2.4, 14.235146, 137.724, -12.15, -162.15};
   std::vector<double> ys = {14.235146, 137.724, -12.15, -162.15};

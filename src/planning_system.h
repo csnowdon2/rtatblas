@@ -1,4 +1,5 @@
 #pragma once
+
 #include <functional>
 #include <numeric>
 #include <map>
@@ -12,6 +13,7 @@
 #include "plan.h"
 #include "predicates.h"
 
+namespace rtat {
 
 template<typename Input_Params, typename Input_Key, typename Opts>
 class Planning_System {
@@ -40,15 +42,13 @@ public:
 
     Analytics &an = get_analytics(params);
 
-    an.performance_data[opts].measure([&](Stream &str) {
+    an.performance_data[opts].measure([&](const Stream &str) {
       internal_execute(opts, params, str);
     }, s);
   }
 
   virtual void warmup(Opts opts, Input_Params params, Stream s) {
-
-    Analytics &an = get_analytics(params);
-
+    get_analytics(params);
     internal_execute(opts, params, s);
   }
 
@@ -72,7 +72,7 @@ public:
       auto top = top_n(key, n);
 
       std::cout << key << std::endl;
-      for (int i = 0; i < top.size(); i++) {
+      for (size_t i = 0; i < top.size(); i++) {
         std::cout << i+1 << " " << top[i] << " " << an.performance_data[top[i]].get_time() << std::endl;
       }
     }
@@ -84,13 +84,13 @@ public:
       auto top = bottom_n(key, n);
 
       std::cout << key << std::endl;
-      for (int i = 0; i < top.size(); i++) {
+      for (size_t i = 0; i < top.size(); i++) {
         std::cout << i+1 << " " << top[i] << " " << an.performance_data[top[i]].get_time() << std::endl;
       }
     }
   }
 
-  std::vector<Opts> get_n(Input_Key key, int n, std::function<bool(float,float)> cmp) {
+  std::vector<Opts> get_n(Input_Key key, size_t n, std::function<bool(float,float)> cmp) {
     auto &data = get_analytics(key).performance_data;
 
     if (n > data.size()) n = data.size();
@@ -189,7 +189,7 @@ struct GEMM_Inputs {
 
 struct GEMM_Key {
   cublasOperation_t transa; cublasOperation_t transb;
-  int m; int k; int n;
+  int m; int n; int k;
 
   GEMM_Key(GEMM_Inputs i) : transa(i.transa), transb(i.transb), 
                             m(i.m()), n(i.n()), k(i.k()) {}
@@ -225,7 +225,7 @@ struct GEMM_Key {
   }
 };
 
-cublasOperation_t switch_op(cublasOperation_t op) {
+inline cublasOperation_t switch_op(cublasOperation_t op) {
   switch (op) {
     case CUBLAS_OP_N: return CUBLAS_OP_T;
     case CUBLAS_OP_T: return CUBLAS_OP_N;
@@ -236,7 +236,7 @@ cublasOperation_t switch_op(cublasOperation_t op) {
 }
 
 
-Predicate<std::pair<GEMM_Options, GEMM_Key>>
+inline Predicate<std::pair<GEMM_Options, GEMM_Key>>
     exclude_option(cublasOperation_t opA, cublasOperation_t opB) {
   return [opA, opB](std::pair<GEMM_Options, GEMM_Key> p) -> bool {
     auto &opts = p.first;
@@ -253,7 +253,7 @@ Predicate<std::pair<GEMM_Options, GEMM_Key>>
 
 // Predicate which succeeds only for problems which match the given
 // options and transposes
-Predicate<std::pair<GEMM_Options, GEMM_Key>>
+inline Predicate<std::pair<GEMM_Options, GEMM_Key>>
     permit_option(GEMM_Options opts, cublasOperation_t opa, cublasOperation_t opb) {
   return [opts, opa, opb](std::pair<GEMM_Options, GEMM_Key> p) -> bool {
     return (p.first == opts) && 
@@ -263,7 +263,7 @@ Predicate<std::pair<GEMM_Options, GEMM_Key>>
 }
 
 class GEMM_Planner : public Planning_System<GEMM_Inputs, GEMM_Key, GEMM_Options> {
-  int tests_until_converge = 1;
+  unsigned int tests_until_converge = 1;
 public:
   GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> predicates, 
                int tests_until_converge) : Planning_System(predicates), 
@@ -331,7 +331,7 @@ public:
 
     //GEMM_Options plan(NOTRANS, NOTRANS);
     GEMM_Options plan = an.performance_data.begin()->first;
-    int min_count = 10000;
+    unsigned int min_count = 10000;
     for (auto &[opts, rec] : an.performance_data)
       if (rec.count() < min_count) min_count = rec.count();
 
@@ -464,7 +464,7 @@ public:
   // Hack workaround, seems we need to warm-up exhaustively. Can have 
   // an NN run fine followed by a TT with 2 second overhead, looks like 
   // warming up dgeam fixes this.
-  void warmup(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
+  void warmup([[maybe_unused]] GEMM_Options opts, GEMM_Inputs params, [[maybe_unused]] Stream s) override {
     size_t n = 8;
     double *A, *B, *C;
     gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
@@ -485,7 +485,7 @@ public:
   }
 private:
 
-  void internal_execute(GEMM_Options opts, GEMM_Inputs params, Stream s) override {
+  void internal_execute(GEMM_Options opts, GEMM_Inputs params, [[maybe_unused]] Stream s) override {
     auto mult = form_operation(opts, params);
     if (mult->workspace_req() > params.space.size()) {
       opts = degrade_plan(params);
@@ -500,3 +500,5 @@ private:
   bool warm_id = false;
   bool warm_other = false;
 };
+
+}

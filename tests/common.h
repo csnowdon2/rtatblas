@@ -1,6 +1,8 @@
 #pragma once
 #include <gpu-api.h>
 
+using namespace rtat;
+
 class BLAS_Test : public ::testing::Test {
 protected:
   virtual ~BLAS_Test() = default;
@@ -94,23 +96,23 @@ public:
   friend bool operator==(const TestMatrix &A, const TestMatrix &B) {
     if (A.m != B.m || A.n != B.n) return false;
 
-    for (int i = 0; i < A.m; i++) 
-      for (int j = 0; j < A.n; j++) 
+    for (size_t i = 0; i < A.m; i++) 
+      for (size_t j = 0; j < A.n; j++) 
         if (abs(A.host_vector[j*A.ld+i]-B.host_vector[j*B.ld+i]) > 1e-10) return false;
 
     return true;
   }
 
   bool is_zero() {
-    for (int i = 0; i < m; i++) 
-      for (int j = 0; j < n; j++) 
+    for (size_t i = 0; i < m; i++) 
+      for (size_t j = 0; j < n; j++) 
         if (abs(host_vector[j*ld+i]) > 1e-10) return false;
     return true;
   }
 
   void print() {
-    for (int i = 0; i < ld; i++) {
-      for (int j = 0; j < n; j++) {
+    for (size_t i = 0; i < ld; i++) {
+      for (size_t j = 0; j < n; j++) {
         std::cout << host_vector[j*ld+i] << " ";
       }
       std::cout << std::endl;
@@ -126,11 +128,11 @@ void test_gemm(TestMatrix &A, TestMatrix &B, TestMatrix &C, double alpha, double
   auto ixA = [&](int i, int j) {return transa ? i*A.ld+j : j*A.ld+i;};
   auto ixB = [&](int i, int j) {return transb ? i*B.ld+j : j*B.ld+i;};
 
-  int k = transa ? A.m : A.n;
-  for (int i = 0; i < C.m; i++) {
-    for (int j = 0; j < C.n; j++) {
+  size_t k = transa ? A.m : A.n;
+  for (size_t i = 0; i < C.m; i++) {
+    for (size_t j = 0; j < C.n; j++) {
       C.host_vector[j*C.ld+i] *= beta;
-      for (int l = 0; l < k; l++) {
+      for (size_t l = 0; l < k; l++) {
         C.host_vector[j*C.ld+i] += alpha*A.host_vector[ixA(i,l)]*B.host_vector[ixB(l,j)];
       }
     }

@@ -7,6 +7,8 @@
 #include <vector>
 #include <limits>
 
+namespace rtat {
+
 struct Problem {
   int m, k, n;
   cublasOperation_t opA, opB;
@@ -99,7 +101,7 @@ public:
     return is;
   }
 
-  Problem_Set() : problems(), filename("") {}
+  Problem_Set() : filename(""), problems() {}
   Problem_Set(std::string filename) : filename(filename) {
     std::ifstream is(filename, std::ios::binary);
     if (!is.good()) {
@@ -135,3 +137,4 @@ public:
 
   std::vector<Problem>& get_problems() { return problems; } 
 };
+}

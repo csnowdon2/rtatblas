@@ -2,7 +2,9 @@
 #include <planning_system.h>
 #include <nlohmann/json.hpp>
 
-nlohmann::json jsonify(GEMM_Key key) {
+namespace rtat {
+
+inline nlohmann::json jsonify(GEMM_Key key) {
   nlohmann::json ret;
   ret["m"] = key.m;
   ret["k"] = key.k;
@@ -53,3 +55,5 @@ public:
     } while (true);
   }
 };
+
+}

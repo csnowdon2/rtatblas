@@ -2,6 +2,8 @@
 #include <iostream>
 #include "gpu-api.h"
 
+using namespace rtat;
+
 TEST(API_Test, Creation) {
   Stream s;
   Event e;

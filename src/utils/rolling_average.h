@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 
+namespace rtat {
+
 class Rolling_Average {
 public:
   void add_value(double value);
@@ -38,3 +40,5 @@ private:
   size_t place = 0;
   std::vector<double> vals;
 };
+
+}

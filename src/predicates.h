@@ -3,6 +3,8 @@
 #include <functional>
 #include <numeric>
 
+namespace rtat {
+
 template<typename T>
 using Predicate = std::function<bool(T)>;
 
@@ -18,3 +20,4 @@ Predicate<T> disjunction(std::vector<Predicate<T>> preds) {
   };
 }
 
+}

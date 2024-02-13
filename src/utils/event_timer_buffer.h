@@ -1,6 +1,8 @@
 #include <gpu-api.h>
 #include <queue>
 
+namespace rtat {
+
 class Change_Device {
 public:
   Change_Device(int device);
@@ -24,3 +26,4 @@ private:
   int device_id;
   std::queue<std::pair<Event, Event>> timer_queue;
 };
+}

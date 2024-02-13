@@ -5,6 +5,8 @@
 #include <iostream>
 #include <stack>
 
+namespace rtat {
+
 class GPU_Stack_Buffer {
   std::stack<size_t> stack;
 
@@ -83,7 +85,7 @@ public:
 
   virtual ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
 
-  virtual GEMM_Options get_plan(GEMM_Inputs inputs) {
+  virtual GEMM_Options get_plan([[maybe_unused]] GEMM_Inputs inputs) {
     return GEMM_Options(NOTRANS, NOPAD, NOTRANS, NOPAD, NOTRANS, NOPAD);
   }
 
@@ -169,7 +171,7 @@ public:
 class RoundRobinRunner : public Runner {
   int i=-1;
 public:
-  GEMM_Options get_plan(GEMM_Inputs inputs) override {
+  GEMM_Options get_plan([[maybe_unused]] GEMM_Inputs inputs) override {
     const auto ops = GEMM_Options::enumerate();
     i = (i+1)%ops.size();
     return ops[i];
@@ -179,7 +181,7 @@ public:
 class ExhaustiveRunner : public Runner {
   GEMM_Options current_plan;
 public:
-  GEMM_Options get_plan(GEMM_Inputs inputs) override {
+  GEMM_Options get_plan([[maybe_unused]] GEMM_Inputs inputs) override {
     return current_plan;
   }
 
@@ -190,3 +192,4 @@ public:
     }
   }
 };
+}

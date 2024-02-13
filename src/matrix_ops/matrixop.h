@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 
+namespace rtat {
+
 // Represents a matrix that may not have been computed yet, an 
 // abstract description of a matrix computation. It can be 
 // concretized by providing space for the matrix and an execution 
@@ -39,7 +41,7 @@ public:
     size_t operand_space = 0;
     size_t extra_space = 0;
 
-    for (int i = 0; i < operands.size(); i++) {
+    for (int i = 0; i < (int)operands.size(); i++) {
       auto &op = operands[i];
       if (i != output_operand)
         operand_space += op->output_space_req();
@@ -54,7 +56,7 @@ public:
                                        Workspace out_space, Workspace scratch_space) {
     // TODO compute operands in decreasing order of space requirements
     std::vector<Matrix> output;
-    for (int i = 0; i < operands.size(); i++) {
+    for (int i = 0; i < (int)operands.size(); i++) {
       auto &operand = operands[i];
       Workspace operand_space;
 
@@ -80,7 +82,7 @@ class NoOp : public MatrixOp {
 public:
   NoOp(Matrix A) : MatrixOp({}), A(A) {}
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  Matrix execute([[maybe_unused]] cublasHandle_t handle, [[maybe_unused]] Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
     return A;
   }
 
@@ -107,7 +109,7 @@ public:
     return MatrixDims(m,n,ld);
   }
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  Matrix execute([[maybe_unused]] cublasHandle_t handle, Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
     return Matrix(out_space, dims());
   }
 };
@@ -234,8 +236,8 @@ public:
       std::cout << "Bad matrix mult, kA=" << kA << " kB=" << kB << std::endl;
       throw;
     }
-    int mA = transa ? Aop->dims().n : Aop->dims().m;
-    int nB = transb ? Bop->dims().m : Bop->dims().n;
+    size_t mA = transa ? Aop->dims().n : Aop->dims().m;
+    size_t nB = transb ? Bop->dims().m : Bop->dims().n;
     if (mA != Cop->dims().m || nB != Cop->dims().n) {
       std::cout << "Bad matrix mult, mA=" << mA << ", mC=" << Cop->dims().m
                 <<                ", nB=" << nB << ", nC=" << Cop->dims().n << std::endl;
@@ -334,3 +336,5 @@ public:
   }
 
 };
+
+}

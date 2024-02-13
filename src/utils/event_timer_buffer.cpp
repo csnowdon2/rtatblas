@@ -1,6 +1,8 @@
 #include "event_timer_buffer.h"
 #include <iostream>
 
+namespace rtat {
+
 Change_Device::Change_Device(int device) : current_device(device) {
   gpuAssert(cudaGetDevice(&old_device));
   if (old_device != current_device) gpuAssert(cudaSetDevice(current_device));
@@ -37,3 +39,4 @@ size_t Event_Timer_Buffer::count() {
   return timer_queue.size();
 }
 
+}

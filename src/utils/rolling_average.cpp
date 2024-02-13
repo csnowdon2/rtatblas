@@ -1,6 +1,8 @@
 #include "rolling_average.h"
 #include <numeric>
 
+namespace rtat {
+
 
 void Rolling_Average::add_value(double value) {
   total += value; 
@@ -49,4 +51,6 @@ void Detailed_Average::reset() {
 
 size_t Detailed_Average::count() {
   return vals.size();
+}
+
 }

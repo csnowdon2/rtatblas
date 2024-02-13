@@ -51,6 +51,8 @@
 #include <math.h>
 #include <iostream>
 
+namespace rtat {
+
 #define gpuAssert(ans)                          \
   {                                             \
     gpu_error_check((ans), __FILE__, __LINE__); \
@@ -125,3 +127,5 @@ public:
 private:
   std::shared_ptr<Raw_Event> raw_event;
 };
+
+}

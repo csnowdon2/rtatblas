@@ -1,7 +1,5 @@
 #pragma once
-#include <variant>
-#include <vector>
-#include <map>
+
 #include <sstream>
 #include <ios>
 #ifdef CUDA
@@ -11,6 +9,7 @@
 #endif
 #include "options.h"
 
+namespace rtat {
 
 enum BLAS_Op {
   NOTRANS, TRANS
@@ -20,7 +19,7 @@ enum Pad_Op {
   NOPAD, PAD
 };
 
-char op_to_char(BLAS_Op op) {
+inline char op_to_char(BLAS_Op op) {
   switch (op) {
     case TRANS: return 'T';
     case NOTRANS: return 'N';
@@ -28,7 +27,7 @@ char op_to_char(BLAS_Op op) {
   }
 }
 
-char op_to_char(Pad_Op op) {
+inline char op_to_char(Pad_Op op) {
   switch (op) {
     case PAD: return 'P';
     case NOPAD: return 'N';
@@ -36,7 +35,7 @@ char op_to_char(Pad_Op op) {
   }
 }
 
-BLAS_Op char_to_blas_op(char c) {
+inline BLAS_Op char_to_blas_op(char c) {
   switch (c) {
     case 'N': return NOTRANS;
     case 'T': return TRANS;
@@ -44,7 +43,7 @@ BLAS_Op char_to_blas_op(char c) {
   }
 }
 
-Pad_Op char_to_pad_op(char c) {
+inline Pad_Op char_to_pad_op(char c) {
   switch (c) {
     case 'N': return NOPAD;
     case 'P': return PAD;
@@ -103,3 +102,4 @@ public:
   }
 };
 
+}
