@@ -489,7 +489,7 @@ private:
     auto mult = form_operation(opts, params);
     if (mult->workspace_req() > params.space.size()) {
       opts = degrade_plan(params);
-      mult = std::move(form_operation(opts, params));
+      mult = form_operation(opts, params);
       //std::cout << "INSUFFICIENT WORKSPACE" << std::endl;
       //throw "Insufficient workspace";
     }
@@ -497,8 +497,6 @@ private:
     // What to do if workspace is insufficient?
   }
 
-  bool warm_id = false;
-  bool warm_other = false;
 };
 
 }

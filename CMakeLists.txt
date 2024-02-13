@@ -4,12 +4,12 @@ project(RTATBLAS)
 
 # GPU libraries
 find_package(CUDA)
+
 if (NOT CUDA_FOUND)
   find_package(HIP REQUIRED)
   find_package(hipBLAS REQUIRED)
   find_package(rocBLAS REQUIRED)
-  set(GPU_LIBRARIES ${HIP_LIBRARIES})
-  set(GPU_LIBRARIES ${HIPBLAS_LIBRARIES})
+  set(GPU_LIBRARIES hip::host roc::rocblas roc::hipblas)
   set(GPU_INCLUDE_DIRS ${HIP_INCLUDE_DIRS})
   add_definitions(-DHIP)
 else()
