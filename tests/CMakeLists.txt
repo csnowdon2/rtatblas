@@ -1,6 +1,6 @@
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(GTest REQUIRED)
+find_package(GTest)
 if (NOT GTest_FOUND)
   include(FetchContent)
   FetchContent_Declare(

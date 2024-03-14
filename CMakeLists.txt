@@ -21,7 +21,7 @@ endif()
 message("GPU LIBS " ${GPU_LIBRARIES})
 
 # JSON
-find_package(nlohmann_json 3.11.3 REQUIRED)
+find_package(nlohmann_json 3.11.3)
 if  (NOT nlohmann_json_FOUND)
   include(FetchContent)
 
