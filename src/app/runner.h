@@ -102,6 +102,7 @@ public:
   }
 
   void load_predicates(std::string filename) {
+    if (filename.size() == 0) return;
     std::cout << "LOADING PREDFILE " << filename << std::endl;
     std::ifstream is(filename);
     if (!is.good()) {

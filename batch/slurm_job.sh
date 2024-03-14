@@ -5,7 +5,7 @@
 #SBATCH --partition=gpu-dev
 #SBATCH --account=director2178-gpu
 #SBATCH --time=04:00:00
-#SBATCH -o ./logs/output.%a.out
+#SBATCH -o ./logs/output.%x.%j.out
 
 if [ ! -f "$EXE" ]; then
   echo "EXE FILE \"$EXE\" DOES NOT EXIST"

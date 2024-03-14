@@ -63,9 +63,9 @@ for subdir, dirs, files in os.walk(directory):
           rows.append(rowbase+rowext)
 
 if rows:
-  print("DIR", subdir)
   # Transform data, add tflops
   df = pd.DataFrame(rows, columns=columns)
+  df = df.drop_duplicates(subset=columns[:11])
   df['tflops'] = df['m']*df['k']*df['n']*2/(df['ms']/1000)/1e12
 
   enabled_options = dict()

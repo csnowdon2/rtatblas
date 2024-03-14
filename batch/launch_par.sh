@@ -31,11 +31,11 @@ if ! [ -d ${DIR} ]; then
 
     echo "Running input=" $INPUT " exe=" $EXE
     if which sbatch &> /dev/null; then 
-      sbatch --export=ALL,DIR="$(readlink -f ${SUBDIR})",INPUT="",EXE="${EXE}" -D $ROOT $ROOT/slurm_job.sh
+      sbatch --export=ALL,PREDFILE=${PREDFILE},DIR="$(readlink -f ${SUBDIR})",INPUT="",EXE="${EXE}" -D $ROOT $ROOT/slurm_job.sh
     elif which qsub &> /dev/null; then
       echo "CALUM NEED TO SET WORKING DIRECTORY IN QSUB"
       exit 1
-      qsub -v DIR="$(readlink -f ${SUBDIR})",INPUT="",EXE="${EXE}" $ROOT/pbs_job.sh 
+      qsub -v PREDFILE=${PREDFILE},DIR="$(readlink -f ${SUBDIR})",INPUT="",EXE="${EXE}" $ROOT/pbs_job.sh 
     fi
   done
 else
