@@ -1,13 +1,16 @@
 set(CMAKE_CXX_STANDARD 17)
 
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
+find_package(GTest REQUIRED)
+if (NOT GTest_FOUND)
+  include(FetchContent)
+  FetchContent_Declare(
+    GTest
+    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+  )
+  # For Windows: Prevent overriding the parent project's compiler/linker settings
+  FetchContent_MakeAvailable(GTest)
+endif()
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
 
