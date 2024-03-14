@@ -21,13 +21,19 @@ endif()
 message("GPU LIBS " ${GPU_LIBRARIES})
 
 # JSON
-include(FetchContent)
+find_package(nlohmann_json 3.11.3 REQUIRED)
+if  (NOT nlohmann_json_FOUND)
+  include(FetchContent)
 
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
-FetchContent_MakeAvailable(json)
+  FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+  FetchContent_MakeAvailable(json)
+endif()
 
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
 
 add_subdirectory(src)
 enable_testing()
 add_subdirectory(tests)
+
+install(TARGETS rtatblas RUNTIME DESTINATION lib)
+install(TARGETS autotune RUNTIME DESTINATION bin)
