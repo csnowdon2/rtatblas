@@ -490,11 +490,8 @@ private:
     if (mult->workspace_req() > params.space.size()) {
       opts = degrade_plan(params);
       mult = form_operation(opts, params);
-      //std::cout << "INSUFFICIENT WORKSPACE" << std::endl;
-      //throw "Insufficient workspace";
     }
     mult->execute(params.handle, Workspace(), params.space);
-    // What to do if workspace is insufficient?
   }
 
 };

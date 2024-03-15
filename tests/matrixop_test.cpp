@@ -130,3 +130,34 @@ TEST_F(MatrixOp_Test, TTMulTest) {
 
   ASSERT_TRUE(C.is_zero());
 }
+
+TEST_F(MatrixOp_Test, BatchMatMulTest) {
+  int m = 4;
+  int k = 4;
+  int n = 4;
+
+  TestMatrix A(m,k,m);
+  TestMatrix B(k,n,k);
+  TestMatrix C(m,n,m);
+
+  {
+    std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
+    std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
+    std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
+
+    BatchMatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, 1.0, 0.0);
+    ASSERT_EQ(mult.output_space_req(), 0);
+    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req()));
+  }
+  {
+    std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
+    std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
+    std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
+
+    MatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, -1.0, 1.0);
+    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req()));
+  }
+
+  C.download();
+  ASSERT_TRUE(C.is_zero());
+}
