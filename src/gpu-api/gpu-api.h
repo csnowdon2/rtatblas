@@ -36,6 +36,7 @@
 #define cublasDestroy hipblasDestroy
 #define cublasDgeam hipblasDgeam
 #define cublasDgemm hipblasDgemm
+#define cublasDgemmBatched hipblasDgemmBatched
 #define cublasGetStream hipblasGetStream
 #define cublasSetStream hipblasSetStream
 #define cublasHandle_t hipblasHandle_t

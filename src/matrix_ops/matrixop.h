@@ -337,4 +337,77 @@ public:
 
 };
 
+
+class BatchMatrixMult : public MatrixOp {
+  bool transa, transb;
+  double alpha, beta;
+public:
+  BatchMatrixMult(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
+             std::unique_ptr<MatrixOp> Cop, bool transa, bool transb, 
+             double alpha, double beta) : MatrixOp({}, 2), transa(transa), transb(transb),
+                                          alpha(alpha), beta(beta) {
+    int kA = transa ? Aop->dims().m : Aop->dims().n;
+    int kB = transb ? Bop->dims().n : Bop->dims().m;
+    if (kA != kB) {
+      std::cout << "Bad matrix mult, kA=" << kA << " kB=" << kB << std::endl;
+      throw;
+    }
+    size_t mA = transa ? Aop->dims().n : Aop->dims().m;
+    size_t nB = transb ? Bop->dims().m : Bop->dims().n;
+    if (mA != Cop->dims().m || nB != Cop->dims().n) {
+      std::cout << "Bad matrix mult, mA=" << mA << ", mC=" << Cop->dims().m
+                <<                ", nB=" << nB << ", nC=" << Cop->dims().n << std::endl;
+    }
+    
+    operands.push_back(std::move(Aop));
+    operands.push_back(std::move(Bop));
+    operands.push_back(std::move(Cop));
+  }
+
+  MatrixDims dims() const override {
+    auto &Cop = operands[2];
+    return Cop->dims();
+  }
+
+  size_t output_space_req() const override {return 0;}
+
+  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+
+    auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
+    auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
+    auto matrices = compute_operands(handle, out_space, scratch_space);
+
+    Matrix &A = matrices[0];
+    Matrix &B = matrices[1];
+    Matrix &C = matrices[2];
+
+    int m = C.dims().m;
+    int n = C.dims().n;
+    int k = transa ? A.dims().m : A.dims().n;
+
+    const int mblock = 4;
+    const int block_count = m/mblock;
+    if (m % mblock != 0) throw "aaa";
+
+    std::vector<double*> Ablocks;
+    std::vector<double*> Bblocks;
+    std::vector<double*> Cblocks;
+    for (int i = 0; i < m; i += mblock) {
+      Ablocks.push_back(&A.ptr()[i]);
+      Bblocks.push_back(B.ptr());
+      Cblocks.push_back(&C.ptr()[i]);
+    }
+
+    cublasDgemmBatched(handle, opA, opB,
+                       mblock, n, k,
+                       &alpha,
+                       Ablocks.data(), A.dims().ld,
+                       Bblocks.data(), B.dims().ld,
+                       &beta,
+                       Cblocks.data(), C.dims().ld,
+                       block_count);
+    return C;
+  }
+};
+
 }
