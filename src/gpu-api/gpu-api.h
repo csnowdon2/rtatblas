@@ -4,7 +4,7 @@
 #include <cublas_v2.h>
 #else
 #include <hip/hip_runtime.h>
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #define cudaMemGetInfo hipMemGetInfo
 #define cudaEventCreate hipEventCreate
 #define cudaEventDestroy hipEventDestroy

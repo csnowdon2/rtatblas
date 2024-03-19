@@ -131,10 +131,10 @@ TEST_F(MatrixOp_Test, TTMulTest) {
   ASSERT_TRUE(C.is_zero());
 }
 
-TEST_F(MatrixOp_Test, BatchMatMulTest) {
-  int m = 4;
-  int k = 4;
-  int n = 4;
+TEST_F(MatrixOp_Test, TiledMatMulTest) {
+  int m = 1024;
+  int k = 1024;
+  int n = 1024;
 
   TestMatrix A(m,k,m);
   TestMatrix B(k,n,k);
@@ -145,7 +145,8 @@ TEST_F(MatrixOp_Test, BatchMatMulTest) {
     std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
     std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
 
-    BatchMatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, 1.0, 0.0);
+    TiledMatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), 
+                         false, false, 1.0, 0.0, 128, 128, 128);
     ASSERT_EQ(mult.output_space_req(), 0);
     mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req()));
   }
