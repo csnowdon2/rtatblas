@@ -223,6 +223,7 @@ public:
 
 
 class MatrixMult : public MatrixOp {
+protected:
   bool transa, transb;
   double alpha, beta;
 public:
@@ -255,7 +256,7 @@ public:
 
   size_t output_space_req() const override {return 0;}
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  virtual Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
     auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -409,5 +410,53 @@ public:
     return C;
   }
 };
+
+class TiledMatrixMult : public MatrixMult {
+  int mblock, nblock, kblock;
+public:
+  TiledMatrixMult(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
+                  std::unique_ptr<MatrixOp> Cop, bool transa, bool transb, 
+                  double alpha, double beta, int mblock, int nblock, int kblock) 
+        : MatrixMult(std::move(Aop), std::move(Bop), std::move(Cop), transa, transb, alpha, beta),
+          mblock(mblock), nblock(nblock), kblock(kblock) {}
+
+  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+
+    auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
+    auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
+    auto matrices = compute_operands(handle, out_space, scratch_space);
+
+    Matrix &A = matrices[0];
+    Matrix &B = matrices[1];
+    Matrix &C = matrices[2];
+
+    int m = C.dims().m;
+    int n = C.dims().n;
+    int k = transa ? A.dims().m : A.dims().n;
+
+    for (int a = 0; a < m; a += mblock) {
+      for (int b = 0; b < n; b += nblock) {
+        for (int c = 0; c < k; c += kblock) {
+          int msize = std::min(mblock, m-a);
+          int nsize = std::min(nblock, n-b);
+          int ksize = std::min(kblock, k-c);
+
+          double bet = beta;
+          if (c > 0) bet = 1.0;
+          cublasDgemm(handle,
+                      opA, opB,
+                      msize, nsize, ksize,
+                      &alpha,
+                      &A.ptr()[c*A.dims().ld + a], A.dims().ld,
+                      &B.ptr()[b*B.dims().ld + c], B.dims().ld,
+                      &bet,
+                      &C.ptr()[b*C.dims().ld + a], C.dims().ld);
+        }
+      }
+    }
+    return C;
+  }
+};
+
 
 }

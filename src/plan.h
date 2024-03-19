@@ -5,7 +5,7 @@
 #ifdef CUDA
 #include <cublas_v2.h>
 #else
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #endif
 #include "options.h"
 
