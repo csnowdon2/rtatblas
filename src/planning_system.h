@@ -22,8 +22,8 @@ class Planning_System {
   using Options_Type = Opts;
 public:
   Planning_System() = default;
-  Planning_System(std::vector<Predicate<std::pair<Opts, Input_Key>>> predicates) 
-      : predicates(predicates) {}
+  Planning_System(std::vector<Predicate<std::pair<Opts, Input_Key>>> predicates, bool synchronous) 
+      : predicates(predicates), synchronous(synchronous) {}
   // Can probably come up with a sensible default that could 
   // be overridden. e.g. just consider walltimes naively 
   // vs using flop rates to figure out absolute performance.
@@ -123,7 +123,7 @@ protected:
 
   class Analytics {
     public:
-    Analytics(std::vector<Predicate<Opts>> predicates) {
+    Analytics(std::vector<Predicate<Opts>> predicates, bool synchronous = true) {
       for (auto &opts : Opts::enumerate()) {
         bool good = true;
         for (auto &pred : predicates) {
@@ -133,15 +133,15 @@ protected:
           }
         }
         if (good)
-          performance_data.emplace(std::make_pair(opts, Performance_Record(true)));
+          performance_data.emplace(std::make_pair(opts, Performance_Record(synchronous)));
       }
 
       if (performance_data.size() == 0) {
         std::cout << "WARNING: no valid options found for analytics, using default behaviour" << std::endl;
-        performance_data.emplace(std::make_pair(Opts::enumerate()[0], Performance_Record(true)));
+        performance_data.emplace(std::make_pair(Opts::enumerate()[0], Performance_Record(synchronous)));
       }
     }
-    Analytics() : Analytics({}) {}
+    Analytics(bool synchronous = true) : Analytics({}, synchronous) {}
 
     std::map<Opts, Performance_Record> performance_data;
   };
@@ -152,7 +152,9 @@ protected:
       for (auto &pred : predicates)
         preds.push_back([&pred,&key](Opts opts) -> bool 
             {return pred(std::make_pair(opts,key));});
-      analytics.emplace(std::make_pair(key, preds));
+      //analytics.emplace(std::make_pair(key, preds), synchronous);
+      analytics.emplace(std::piecewise_construct, std::make_tuple(key), 
+                                                  std::make_tuple(preds,synchronous));
     }
     return analytics.find(key)->second;
   }
@@ -164,6 +166,7 @@ protected:
   std::vector<Predicate<std::pair<Opts, Input_Key>>> predicates;
   std::map<Input_Key, Analytics> analytics;
   bool warm = false;
+  const bool synchronous;
 };
 
 
@@ -266,9 +269,10 @@ class GEMM_Planner : public Planning_System<GEMM_Inputs, GEMM_Key, GEMM_Options>
   unsigned int tests_until_converge = 1;
 public:
   GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> predicates, 
-               int tests_until_converge) : Planning_System(predicates), 
-                                           tests_until_converge(tests_until_converge) {
-  }
+               int tests_until_converge = 1, bool synchronous = true) 
+                  : Planning_System(predicates, synchronous), 
+                    tests_until_converge(tests_until_converge) {}
+
   GEMM_Planner(std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> predicates) 
       : GEMM_Planner(predicates, 1) {}
   GEMM_Planner() : GEMM_Planner({}, 1) {}
