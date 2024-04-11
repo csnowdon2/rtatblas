@@ -2,9 +2,11 @@
 #ifdef CUDA
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <curand.h>
 #else
 #include <hip/hip_runtime.h>
 #include <hipblas/hipblas.h>
+#include <hiprand/hiprand.h>
 #define cudaMemGetInfo hipMemGetInfo
 #define cudaEventCreate hipEventCreate
 #define cudaEventDestroy hipEventDestroy
@@ -47,6 +49,10 @@
 #define cudaSuccess hipSuccess
 #define cudaGetErrorString hipGetErrorString 
 #define cudaError_t hipError_t 
+#define curandGenerator_t hiprandGenerator_t
+#define curandCreateGenerator hiprandCreateGenerator
+#define curandDestroyGenerator hiprandDestroyGenerator
+#define CURAND_RNG_PSEUDO_DEFAULT HIPRAND_RNG_PSEUDO_DEFAULT
 #endif
 #include <memory>
 #include <math.h>
@@ -65,6 +71,29 @@ inline void gpu_error_check(cudaError_t code, const char* file, int line)
     std::cerr << "GPU Error: " << cudaGetErrorString(code) 
               << " " << file << " " << line << std::endl;
 }
+
+class Raw_Device_RNG {
+public:
+  friend class Device_RNG;
+  virtual ~Raw_Device_RNG() = default;
+protected:
+  Raw_Device_RNG() = default;
+  curandGenerator_t rng;
+};
+
+class Device_RNG {
+public:
+  Device_RNG();
+
+  Device_RNG(const Device_RNG& other);
+  Device_RNG& operator=(const Device_RNG& other);
+
+  operator curandGenerator_t();
+
+  void uniform(double *A, size_t len);
+private:
+  std::shared_ptr<Raw_Device_RNG> raw_rng;
+};
 
 
 // Stream and Event wrappers, intended to mimic the semantics of 

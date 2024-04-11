@@ -9,6 +9,7 @@ namespace rtat {
 
 class GPU_Stack_Buffer {
   std::stack<size_t> stack;
+  Device_RNG rng;
 
   size_t size;
   double *ptr;
@@ -31,6 +32,8 @@ public:
     }
 
     stack.push(pos+doubles);
+
+    rng.uniform(&ptr[pos], doubles);
 
     return &ptr[pos];
   }

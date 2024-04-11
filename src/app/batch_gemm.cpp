@@ -15,9 +15,9 @@ int main(int argc, char *argv[]) {
   int k = atoi(argv[2]);
   int n = atoi(argv[3]);
 
-  int mblock_max = atoi(argv[4]);
+  int mblock = atoi(argv[4]);
   int kblock = atoi(argv[5]);
-  int nblock_max = atoi(argv[6]);
+  int nblock = atoi(argv[6]);
   //cublasOperation_t opA = argv[4][0] == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
   //cublasOperation_t opB = argv[5][0] == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
 
@@ -40,8 +40,8 @@ int main(int argc, char *argv[]) {
   Matrix A = mem.allocate_matrix(m,k);
   Matrix B = mem.allocate_matrix(k,n);
   Matrix C = mem.allocate_matrix(m,n);
-  for (int mblock=64; mblock<=mblock_max; mblock += 128) {
-    for (int nblock=64; nblock<=nblock_max; nblock += 128) {
+  //for (int mblock=64; mblock<=mblock_max; mblock += 128) {
+  //  for (int nblock=64; nblock<=nblock_max; nblock += 128) {
 
       auto t1 = std::chrono::high_resolution_clock::now();
       for (int i = 0; i < reps; i++) {
@@ -59,8 +59,8 @@ int main(int argc, char *argv[]) {
       double t = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()/1000000.0;
       double floprate = reps*((size_t)2)*((size_t)m)*((size_t)k)*((size_t)n)/t*(1e-12);
       std::cout << "\tmblock=" << mblock << "\tnblock=" << nblock << "\tkblock=" << kblock << " " << floprate << " TFLOP/s" << std::endl;
-    }
-  }
+  //  }
+  //}
 
   return 0;
 }
