@@ -2,6 +2,24 @@
 
 namespace rtat {
 
+class Owning_RNG : public Raw_Device_RNG {
+public:
+  Owning_RNG() { curandCreateGenerator(&rng, CURAND_RNG_PSEUDO_DEFAULT); }
+  ~Owning_RNG() { curandDestroyGenerator(rng); }
+};
+
+Device_RNG::Device_RNG() : raw_rng(std::make_shared<Owning_RNG>()) {}
+Device_RNG::Device_RNG(const Device_RNG& other) : raw_rng(other.raw_rng) {}
+
+Device_RNG& Device_RNG::operator=(const Device_RNG& other) { raw_rng = other.raw_rng; return *this; }
+
+Device_RNG::operator curandGenerator_t() { return raw_rng->rng; }
+
+void Device_RNG::uniform(double *A, size_t len) {
+  hiprandGenerateUniformDouble(raw_rng->rng, A, len);
+}
+
+
 class Non_Owning_Stream : public Raw_Stream {
 public:
   Non_Owning_Stream(cudaStream_t stream_) { stream = stream_; }
