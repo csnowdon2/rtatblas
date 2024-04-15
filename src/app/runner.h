@@ -1,4 +1,5 @@
 #pragma once
+#include "plan.h"
 #include "problemset.h"
 #include "json_planner.h"
 #include <planning_system.h>
@@ -162,6 +163,15 @@ public:
       problem.flop_rate = planner.get_floprate(inputs);
       problems.dump();
     }
+  }
+};
+
+class SimpleRunner : public Runner {
+public:
+  GEMM_Options get_plan([[maybe_unused]] GEMM_Inputs inputs) override {
+    return GEMM_Options(BLAS_Op::NOTRANS, Pad_Op::NOPAD,
+                        BLAS_Op::NOTRANS, Pad_Op::NOPAD,
+                        BLAS_Op::NOTRANS, Pad_Op::NOPAD);
   }
 };
 

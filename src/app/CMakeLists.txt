@@ -7,6 +7,9 @@ target_link_libraries(measure_performance PUBLIC app_common)
 add_executable(run_tests run_tests.cpp)
 target_link_libraries(run_tests PUBLIC app_common)
 
+add_executable(simple_test simple_test.cpp)
+target_link_libraries(simple_test PUBLIC app_common)
+
 add_executable(run_tests_exhaustive run_tests_exhaustive.cpp)
 target_link_libraries(run_tests_exhaustive PUBLIC app_common)
 
