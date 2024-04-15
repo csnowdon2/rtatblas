@@ -457,10 +457,10 @@ public:
         total += rec.count()*rec.get_time();
       }
     }
-    std::cout << "Count = " << count << ", Total = " << total << std::endl;
+    // std::cout << "Walltime = " << total << std::endl;
     double secs = (double)(total/count)/1000.0;
     double tflops = 2*params.m()*params.k()*params.n()/1e12;
-    std::cout << "Rate = " << tflops/secs << std::endl;
+    std::cout << "FLOP Rate = " << tflops/secs << " TFLOP/s" << std::endl;
 
     return tflops/secs;
   }

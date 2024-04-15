@@ -5,6 +5,8 @@ endif()
 set (CMAKE_CXX_STANDARD 17)
 project(RTATBLAS)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # GPU libraries
 find_package(CUDAToolkit)
 

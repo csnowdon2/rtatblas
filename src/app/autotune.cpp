@@ -27,9 +27,6 @@ int main(int argc, char *argv[]) {
   // TODO check for duplicate dimensions when using smart measurement
   runner.run_problems(problems, reps);
   runner.sync();
+  //runner.json_output(std::cout);
   //runner.print_analytics();
-  int N = GEMM_Options::enumerate().size();
-  runner.print_top_n(N);
-  runner.json_output(std::cout);
-  //runner.print_bottom_n(N);
 }

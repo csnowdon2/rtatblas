@@ -53,15 +53,34 @@ public:
   }
 };
 
-size_t avail_gpu_mem() {
+inline size_t avail_gpu_mem() {
   size_t free, total;
   gpuAssert(cudaMemGetInfo(&free, &total));
   return free;
 }
 
+inline std::vector<Predicate<std::pair<GEMM_Options, GEMM_Key>>> build_preds() {
+  std::vector<rtat::Trans_Opt> rtat_ops = {rtat::NOTRANS, rtat::TRANS};
+  std::vector<cublasOperation_t> blas_ops = {CUBLAS_OP_N, CUBLAS_OP_T};
+
+  std::vector<rtat::Predicate<std::pair<rtat::GEMM_Options, rtat::GEMM_Key>>> preds;
+  for (rtat::Trans_Opt opA : rtat_ops) {
+    for (rtat::Trans_Opt opB : rtat_ops) {
+      for (cublasOperation_t blas_opA : blas_ops) {
+        for (cublasOperation_t blas_opB : blas_ops) {
+          rtat::GEMM_Options opts(opA, rtat::NOPAD, opB, rtat::NOPAD, rtat::NOTRANS, rtat::NOPAD);
+          preds.push_back(permit_option(opts, blas_opA, blas_opB));
+        }
+      }
+    }
+  }
+  return {rtat::disjunction(preds)};
+}
+
 class Runner {
 protected:
   GPU_Stack_Buffer mem;
+  Device_RNG rng;
   cublasHandle_t handle;
   Stream s;
   JSON_Planner<GEMM_Planner> planner;
@@ -79,7 +98,7 @@ public:
   
 
   Runner() : mem((size_t)(((double)avail_gpu_mem())*0.9)), 
-             planner({}, 1){
+             planner(build_preds(), 1){
     cublasCreate(&handle);
     cublasSetStream(handle,s);
 
@@ -131,11 +150,15 @@ public:
       A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix(m,k) : mem.allocate_matrix(k,m);
       B = (problem.opB == CUBLAS_OP_N) ? mem.allocate_matrix(k,n) : mem.allocate_matrix(n,k);
       C = mem.allocate_matrix(m,n);
+
+      rng.uniform(A.ptr(), A.dims().footprint());
+      rng.uniform(B.ptr(), B.dims().footprint());
+      rng.uniform(C.ptr(), C.dims().footprint());
   
       GEMM_Inputs inputs(handle, problem.opA, problem.opB, A, B, C,
                          1.0, 0.0, Workspace());
   
-      std::cout << "Run problem " << problem << std::endl;
+      // std::cout << "Run problem " << problem << std::endl;
   
       for (int i = 0; i < reps; i++) {
         auto plan = get_plan(inputs);
@@ -144,7 +167,6 @@ public:
           std::cout << "Insufficient memory for input " << problem << ", skipping" << std::endl;
           continue;
         }
-        std::cout << "Running " << plan << std::endl;
 
         size_t ws = planner.calculate_workspace(plan,inputs);
         inputs.space = Workspace(mem.alloc(ws), ws);

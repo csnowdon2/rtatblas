@@ -19,17 +19,11 @@ int main(int argc, char *argv[]) {
 
   int reps = atoi(argv[6]);
 
-  //RoundRobinRunner runner;
   SimpleRunner runner;
-
   Problem_Set problems;
   problems.add_problem(p);
-  // TODO check for duplicate dimensions when using smart measurement
+
   runner.run_problems(problems, reps);
   runner.sync();
-  //runner.print_analytics();
-  runner.print_top_n(1);
-  runner.json_output(std::cout);
-  //runner.print_bottom_n(N);
 }
 
