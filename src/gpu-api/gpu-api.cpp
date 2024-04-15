@@ -16,7 +16,7 @@ Device_RNG& Device_RNG::operator=(const Device_RNG& other) { raw_rng = other.raw
 Device_RNG::operator curandGenerator_t() { return raw_rng->rng; }
 
 void Device_RNG::uniform(double *A, size_t len) {
-  hiprandGenerateUniformDouble(raw_rng->rng, A, len);
+  curandGenerateUniformDouble(raw_rng->rng, A, len);
 }
 
 
