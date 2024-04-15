@@ -4,6 +4,8 @@
 shapes=("960 324480 960" "120 2957880 120" "192 738048 192")
 reps=20
 
+echo "Running computations with ${reps} repetitions each"
+
 for shape in "${shapes[@]}"
 do
   echo ${shape}
