@@ -1,9 +1,7 @@
 #include <gtest/gtest.h>
-#include <random>
 #include <matrixop.h>
 #include <gpu-api.h>
 #include <iostream>
-#include <chrono>
 #include "common.h"
 
 class MatrixOp_Test : public BLAS_Test {};

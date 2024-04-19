@@ -1,5 +1,8 @@
 #pragma once
+#include <gtest/gtest.h>
 #include <gpu-api.h>
+#include <matrixop.h>
+#include <random>
 
 using namespace rtat;
 

@@ -1,3 +1,4 @@
+#pragma once
 #include "workspace.h"
 // There should be no inheritance relationship between Matrix and MatrixOp.
 // Accessing a MatrixOp requires a handle, accessing a Matrix does not.

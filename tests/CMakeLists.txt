@@ -17,6 +17,9 @@ include(GoogleTest)
 add_executable(api_test api_test.cpp)
 target_link_libraries(api_test gpu_api GTest::gtest_main)
 
+add_executable(timing_test timing_test.cpp)
+target_link_libraries(timing_test timing GTest::gtest_main)
+
 add_executable(utils_test utils_test.cpp)
 target_link_libraries(utils_test utils GTest::gtest_main)
 
@@ -30,6 +33,7 @@ target_compile_options(matrix_ops_test PUBLIC -g)
 add_executable(planning_test planning_test.cpp)
 target_link_libraries(planning_test utils gpu_api matrix_ops GTest::gtest_main)
 gtest_discover_tests(api_test)
+gtest_discover_tests(timing_test)
 gtest_discover_tests(utils_test)
 gtest_discover_tests(plan_test)
 gtest_discover_tests(matrix_ops_test)

@@ -55,7 +55,6 @@
 #define CURAND_RNG_PSEUDO_DEFAULT HIPRAND_RNG_PSEUDO_DEFAULT
 #endif
 #include <memory>
-#include <math.h>
 #include <iostream>
 
 namespace rtat {

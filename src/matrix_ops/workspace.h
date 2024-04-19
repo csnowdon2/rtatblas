@@ -1,4 +1,6 @@
+#pragma once
 #include <cstdlib>
+#include <iostream>
 // Captures user-provided workspace. Non-owning sized pointer.
 
 namespace rtat {

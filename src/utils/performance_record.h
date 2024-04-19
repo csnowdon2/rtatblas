@@ -1,5 +1,4 @@
 #include "event_timer_buffer.h"
-#include <iostream>
 #include "rolling_average.h"
 #include <vector>
 
