@@ -13,7 +13,7 @@ TEST(Device_Timer_Test, Time) {
       std::this_thread::sleep_for(std::chrono::milliseconds(interval));
     },s);
 
-    ASSERT_NEAR(timer.wait_for_time(), interval, 1);
+    ASSERT_NEAR(timer.time(), interval, 1);
   }
 }
 

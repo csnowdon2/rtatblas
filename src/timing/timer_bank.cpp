@@ -6,7 +6,7 @@ void Timer_Bank::update() {
   if (timers.empty())
     return;
 
-  while (auto t = timers.front().time()) {
+  while (auto t = timers.front().query_time()) {
     times.push_back(*t);
     timers.pop();
     if (timers.empty()) break;
