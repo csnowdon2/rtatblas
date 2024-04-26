@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <functional>
-#include <numeric>
 
 namespace rtat {
 
@@ -11,12 +10,22 @@ using Predicate = std::function<bool(T)>;
 template<typename T>
 Predicate<T> disjunction(std::vector<Predicate<T>> preds) {
   return [preds](T val) {
-    std::vector<bool> results;
-    std::transform(preds.cbegin(), preds.cend(),
-                   std::back_inserter(results),
-                   [&val](Predicate<T> pred) {return pred(val);});
-    return std::accumulate(results.cbegin(), results.cend(), false,
-                           [](bool a, bool b) { return a || b; });
+    for (auto &pred : preds) {
+      if (pred(val)) 
+        return true;
+    }
+    return false;
+  };
+}
+
+template<typename T>
+Predicate<T> conjunction(std::vector<Predicate<T>> preds) {
+  return [preds](T val) {
+    for (auto &pred : preds) {
+      if (!pred(val)) 
+        return false;
+    }
+    return true;
   };
 }
 

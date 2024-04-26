@@ -17,6 +17,14 @@ void Timer_Bank::append(Device_Timer &timer) {
   timers.push(std::move(timer));
 }
 
+void Timer_Bank::synchronize() {
+  while (!timers.empty()) {
+    auto& timer = timers.front();
+    times.push_back(timer.time());
+    timers.pop();
+  }
+}
+
 size_t Timer_Bank::size() {
   return timers.size() + times.size();
 }

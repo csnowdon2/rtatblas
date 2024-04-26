@@ -52,6 +52,7 @@
 #define curandGenerator_t hiprandGenerator_t
 #define curandCreateGenerator hiprandCreateGenerator
 #define curandDestroyGenerator hiprandDestroyGenerator
+#define curandGenerateUniformDouble hiprandGenerateUniformDouble
 #define CURAND_RNG_PSEUDO_DEFAULT HIPRAND_RNG_PSEUDO_DEFAULT
 #endif
 #include <memory>

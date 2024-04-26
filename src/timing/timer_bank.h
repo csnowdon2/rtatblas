@@ -1,6 +1,5 @@
 #pragma once
 #include <queue>
-#include <performance_record.h>
 #include <predicates.h>
 
 #include "device_timer.h"
@@ -15,6 +14,7 @@ class Timer_Bank {
 public:
   void append(Device_Timer &timer);
   const std::vector<float>& get_times();
+  void synchronize();
 
   size_t size();
   size_t completed();

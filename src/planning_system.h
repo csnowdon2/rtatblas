@@ -6,6 +6,7 @@
 
 #include <gpu-api.h>
 #include <performance_record.h>
+#include <timer_bank.h>
 
 #include "matrix_ops/matrixop.h"
 #include "options.h"
@@ -13,6 +14,32 @@
 #include "predicates.h"
 
 namespace rtat {
+
+template<typename Input_Key, typename Opts>
+class Timer_Log {
+  std::map<Input_Key, std::map<Opts, Timer_Bank>> store;  
+public:
+  std::map<Opts, Timer_Bank>& operator[](Input_Key key) {
+    // Should default initialize?
+    return store[key];
+  }
+};
+
+template<typename Input_Key, typename Opts>
+class Option_Filter {
+  Predicate<std::pair<Opts,Input_Key>> filter;
+ public:
+  std::vector<Opts> specialize(Input_Key key) {
+    std::vector<Opts> ret;
+
+    for (auto &opts : Opts::enumerate()) {
+      if (filter(opts, key))
+        ret.push_back(opts);
+    }
+
+    return ret;
+  }
+};
 
 template<typename Input_Params, typename Input_Key, typename Opts>
 class Planning_System {
@@ -164,6 +191,7 @@ protected:
 
   std::vector<Predicate<std::pair<Opts, Input_Key>>> predicates;
   std::map<Input_Key, Analytics> analytics;
+
   bool warm = false;
   const bool synchronous;
 };
