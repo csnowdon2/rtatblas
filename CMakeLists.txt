@@ -39,4 +39,4 @@ enable_testing()
 add_subdirectory(tests)
 
 install(TARGETS rtatblas RUNTIME DESTINATION lib)
-install(TARGETS autotune RUNTIME DESTINATION bin)
+#install(TARGETS autotune RUNTIME DESTINATION bin)

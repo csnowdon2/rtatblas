@@ -1,7 +1,4 @@
 #include <gtest/gtest.h>
-#include <chrono>
-#include <random>
-#include <iostream>
 #include "../src/planning_system.h"
 #include "common.h"
 
@@ -20,15 +17,14 @@ TEST_F(Planning_Test, GEMM_Correctness) {
 
   double alpha = 1.0;
 
-  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0, Workspace());
+  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
 
   for (int i=0; i<10; i++) {
     for (auto &plan : GEMM_Options::enumerate()) {
-      size_t ws = planner.calculate_workspace(plan, inputs);
+      size_t ws = planner.calculate_workspace(inputs, plan);
       ManagedWorkspace space(ws);
-      inputs.space = space;
 
-      planner.execute(plan, inputs, s);
+      planner.execute(inputs, plan, space, s);
 
       C.download();
       test_gemm(A, B, C, -alpha, 1.0, false, false);
@@ -52,7 +48,7 @@ TEST_F(Planning_Test, Hello) {
 
   double alpha = 1.0;
 
-  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0, Workspace());
+  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
 
   ManagedWorkspace space(1024);
   for (int j=0; j<2; j++) {
@@ -60,14 +56,13 @@ TEST_F(Planning_Test, Hello) {
     for (size_t i=0; i<reps; i++) {
       GEMM_Options plan = planner.create_plan(inputs);
 
-      size_t req = planner.calculate_workspace(plan, inputs)*sizeof(double);
+      size_t req = planner.calculate_workspace(inputs, plan)*sizeof(double);
       space.grow_to_fit(req);
-      inputs.space = space;
 
-      planner.execute(plan, inputs, s);
+      planner.execute(inputs, plan, space, s);
     }
     gpuAssert(cudaDeviceSynchronize());
-    planner.dump_analytics();
+    //planner.dump_analytics();
   }
 }
 
@@ -84,10 +79,10 @@ TEST_F(Planning_Test, Plan_Degradation) {
   TestMatrix C(m,n,m);
 
   double alpha = 1.0;
-  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0, Workspace());
+  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
 
   for (auto &plan : GEMM_Options::enumerate()) {
-    planner.execute(plan, inputs, s);
+    planner.execute(inputs, plan, Workspace(), s);
 
     C.download();
     test_gemm(A, B, C, -alpha, 1.0, false, false);

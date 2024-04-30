@@ -48,23 +48,24 @@ int main(int argc, char *argv[]) {
   auto A = opA == CUBLAS_OP_N ? allocate_matrix(m,k) : allocate_matrix(k,m);
   auto B = opB == CUBLAS_OP_N ? allocate_matrix(k,n) : allocate_matrix(n,k);
   auto C = allocate_matrix(m,n);
-  GEMM_Inputs inputs(handle, opA, opB, A, B, C, 1.0, 0.0, Workspace());
+  GEMM_Inputs inputs(handle, opA, opB, A, B, C, 1.0, 0.0);
+  Workspace space;
   
   {
     size_t workspace_req = 0;
     for (auto &plan : plans)
       workspace_req = std::max(workspace_req, 
-                               planner.calculate_workspace(plan,inputs)*sizeof(double));
+                               planner.calculate_workspace(inputs,plan)*sizeof(double));
 
-    inputs.space = allocate_workspace(workspace_req);
+    space = allocate_workspace(workspace_req);
   }
 
   // DO WARMUP
 
   for (auto &plan : plans)
     for (int i = 0; i < reps; i++) 
-      planner.execute(plan, inputs, s);
+      planner.execute(inputs, plan, space, s);
 
-  planner.dump_analytics();
+  // planner.dump_analytics();
   return 0;
 }

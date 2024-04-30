@@ -1,10 +1,8 @@
 #include <algorithm>
 #include <gtest/gtest.h>
 #include <set>
-#include <iostream>
 #include "../src/plan.h"
 #include "../src/planning_system.h"
-#include <string>
 
 using namespace rtat;
 

@@ -1,6 +1,5 @@
 #include "problemset.h"
 #include "runner.h"
-#include <sstream>
 #include <iostream>
 
 using namespace rtat;

@@ -6,7 +6,6 @@
 #include <gpu-api.h>
 #include <performance_record.h>
 #include <timer_bank.h>
-#include <statistics.h>
 #include <numeric>
 
 #include "matrix_ops/matrixop.h"
@@ -67,6 +66,7 @@ public:
   }
 
 
+  std::map<Key, std::map<Opts, Timer_Bank>>& get_timings() {return timer_log;}
   std::map<Opts, Timer_Bank>& get_timings(Key key) {return timer_log[key];}
 
   virtual size_t calculate_workspace(Params, Opts) = 0;
@@ -140,8 +140,16 @@ public:
     if (space.size() < executor.calculate_workspace(params, opts)) {
       opts = degrade_plan(params, opts, space);
     }
-    // TODO choose synchronous mode
-    executor.execute(params, opts, space, s);
+
+    auto sync = Device_Timer::ASYNCHRONOUS;
+    if (executor.get_timings(params)[opts].size() < tests_until_converge)
+      sync = Device_Timer::SEMI_SYNCHRONOUS;
+
+    executor.execute(params, opts, space, s, sync);
+  }
+
+  size_t calculate_workspace(Params params, Opts opts) {
+    return executor.calculate_workspace(params, opts);
   }
 };
 
@@ -327,7 +335,7 @@ private:
 };
 
 template class Planning_System<GEMM_Executor>;
-//using GEMM_Planner = Planning_System<GEMM_Executor>;
+using GEMM_Planner = Planning_System<GEMM_Executor>;
 
 // class GEMM_Planner : public Planning_System<GEMM_Executor> {
 //   unsigned int tests_until_converge = 1;

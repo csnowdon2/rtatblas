@@ -8,4 +8,4 @@ add_library(rtatblas INTERFACE)
 target_link_libraries(rtatblas INTERFACE statistics timing utils matrix_ops nlohmann_json::nlohmann_json)
 target_include_directories(rtatblas INTERFACE . statistics timing utils matrix_ops)
 
-add_subdirectory(app)
+#add_subdirectory(app)
