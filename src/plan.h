@@ -64,6 +64,11 @@ public:
   Pad_Opt padb() const {return std::get<3>(*this);}
   Pad_Opt padc() const {return std::get<5>(*this);}
 
+  static GEMM_Options default_opts() {
+    return GEMM_Options(NOTRANS, NOPAD, NOTRANS, NOPAD, 
+                        NOTRANS, NOPAD);
+  }
+
   operator std::string() const {
     std::stringstream ss;
     ss << op_to_char(transa());
