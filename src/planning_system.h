@@ -4,12 +4,10 @@
 #include <iostream>
 
 #include <gpu-api.h>
-#include <performance_record.h>
 #include <timer_bank.h>
 #include <numeric>
 
 #include "matrix_ops/matrixop.h"
-#include "options.h"
 #include "plan.h"
 #include "predicates.h"
 
