@@ -1,6 +1,5 @@
 #pragma once
 #include <queue>
-#include <predicates.h>
 
 #include "device_timer.h"
 

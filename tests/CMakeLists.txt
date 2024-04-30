@@ -28,7 +28,7 @@ target_link_libraries(matrix_ops_test gpu-api matrix_ops GTest::gtest_main)
 target_compile_options(matrix_ops_test PUBLIC -g)
 
 add_executable(planning_test planning_test.cpp)
-target_link_libraries(planning_test timing gpu-api matrix_ops GTest::gtest_main)
+target_link_libraries(planning_test rtatblas GTest::gtest_main)
 gtest_discover_tests(api_test)
 gtest_discover_tests(timing_test)
 gtest_discover_tests(plan_test)
