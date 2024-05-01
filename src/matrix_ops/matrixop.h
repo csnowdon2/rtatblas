@@ -12,6 +12,71 @@ namespace rtat {
 // concretized by providing space for the matrix and an execution 
 // context.
 
+template<typename T>
+inline cublasStatus_t gpuTgemm(cublasHandle_t handle, 
+                               bool transa, bool transb,
+                               Matrix<T> A, Matrix<T> B, Matrix<T> C,
+                               const T alpha, const T beta) {
+  int m = C.dims().m;
+  int n = C.dims().n;
+  int k = transa ? A.dims().m : A.dims().n;
+  if constexpr(std::is_same_v<T,double>) {
+    return cublasDgemm(handle,
+                transa ? CUBLAS_OP_T : CUBLAS_OP_N,
+                transb ? CUBLAS_OP_T : CUBLAS_OP_N,
+                m, n, k,
+                &alpha,
+                A.ptr(), A.dims().ld,
+                B.ptr(), B.dims().ld,
+                &beta,
+                C.ptr(), C.dims().ld);
+  } else if constexpr(std::is_same_v<T,float>) {
+    return cublasSgemm(handle,
+                transa ? CUBLAS_OP_T : CUBLAS_OP_N,
+                transb ? CUBLAS_OP_T : CUBLAS_OP_N,
+                m, n, k,
+                &alpha,
+                A.ptr(), A.dims().ld,
+                B.ptr(), B.dims().ld,
+                &beta,
+                C.ptr(), C.dims().ld);
+  } else {
+    static_assert(!sizeof(T), "GEMM is only double and float");
+  }
+}
+
+template<typename T>
+inline cublasStatus_t gpuTgeam(cublasHandle_t handle, 
+                               bool transa, bool transb,
+                               Matrix<T> A, Matrix<T> B, Matrix<T> C,
+                               const T alpha, 
+                               const T beta) {
+  if constexpr(std::is_same_v<T,double>) {
+    return cublasDgeam(handle,
+                transa ? CUBLAS_OP_T : CUBLAS_OP_N, 
+                transb ? CUBLAS_OP_T : CUBLAS_OP_N, 
+                B.dims().m, B.dims().n,
+                &alpha,
+                A.ptr(), A.dims().ld,
+                &beta,
+                B.ptr(), B.dims().ld,
+                C.ptr(), C.dims().ld);
+  } else if constexpr(std::is_same_v<T,float>) {
+    return cublasSgeam(handle,
+                transa ? CUBLAS_OP_T : CUBLAS_OP_N, 
+                transb ? CUBLAS_OP_T : CUBLAS_OP_N, 
+                B.dims().m, B.dims().n,
+                &alpha,
+                A.ptr(), A.dims().ld,
+                &beta,
+                B.ptr(), B.dims().ld,
+                C.ptr(), C.dims().ld);
+  } else {
+    static_assert(!sizeof(T), "GEAM is only double and float");
+  }
+}
+
+template<typename T>
 class MatrixOp {
 protected:
   std::vector<std::unique_ptr<MatrixOp>> operands;
@@ -29,12 +94,16 @@ public:
 
   virtual ~MatrixOp() = default;
 
-  virtual Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) = 0;
+  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) = 0;
   virtual size_t output_space_req()  const = 0;
   virtual MatrixDims dims() const = 0;
 
   size_t scratch_space_req() const {
     return workspace_req() - output_space_req();    
+  }
+
+  size_t scratch_space_req_bytes() const {
+    return sizeof(T)*scratch_space_req();
   }
 
   size_t workspace_req() const { 
@@ -52,11 +121,15 @@ public:
     return out_space + extra_space;
   }
 
+  size_t workspace_req_bytes() const { 
+    return sizeof(T)*workspace_req();
+  }
 
-  std::vector<Matrix> compute_operands(cublasHandle_t handle,
+
+  std::vector<Matrix<T>> compute_operands(cublasHandle_t handle,
                                        Workspace out_space, Workspace scratch_space) {
     // TODO compute operands in decreasing order of space requirements
-    std::vector<Matrix> output;
+    std::vector<Matrix<T>> output;
     for (int i = 0; i < (int)operands.size(); i++) {
       auto &operand = operands[i];
       Workspace operand_space;
@@ -64,7 +137,7 @@ public:
       if (i == output_operand) {
         operand_space = out_space;
       } else {
-        operand_space = scratch_space.peel(operand->output_space_req());
+        operand_space = scratch_space.peel<T>(operand->output_space_req());
       }
 
       output.emplace_back(operand->execute(handle, operand_space, scratch_space));
@@ -73,17 +146,18 @@ public:
     return output;
   }
 
-  std::vector<Matrix> compute_operands(cublasHandle_t handle, Workspace scratch_space) {
+  std::vector<Matrix<T>> compute_operands(cublasHandle_t handle, Workspace scratch_space) {
     return compute_operands(handle, Workspace(), scratch_space);
   }
 };
 
-class NoOp : public MatrixOp {
-  Matrix A;
+template<typename T>
+class NoOp : public MatrixOp<T> {
+  Matrix<T> A;
 public:
-  NoOp(Matrix A) : MatrixOp({}), A(A) {}
+  NoOp(Matrix<T> A) : MatrixOp<T>({}), A(A) {}
 
-  Matrix execute([[maybe_unused]] cublasHandle_t handle, [[maybe_unused]] Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
+  Matrix<T> execute([[maybe_unused]] cublasHandle_t handle, [[maybe_unused]] Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
     return A;
   }
 
@@ -91,13 +165,14 @@ public:
   MatrixDims dims() const override {return A.dims();}
 };
 
-class ScratchMatrix : public MatrixOp {
+template<typename T>
+class ScratchMatrix : public MatrixOp<T> {
   size_t m, n, ld;
 public:
   ScratchMatrix(MatrixDims dims) : ScratchMatrix(dims.m,dims.n,dims.ld) {}
-  ScratchMatrix(size_t m, size_t n, size_t ld) : MatrixOp({}), m(m), n(n), ld(ld) {}
-  ScratchMatrix(std::unique_ptr<MatrixOp> &op, int pad) 
-    : MatrixOp({}), m(op->dims().m), n(op->dims().n), ld(((op->dims().m+pad-1)/pad)*pad) {}
+  ScratchMatrix(size_t m, size_t n, size_t ld) : MatrixOp<T>({}), m(m), n(n), ld(ld) {}
+  ScratchMatrix(std::unique_ptr<MatrixOp<T>> &op, int pad) 
+    : MatrixOp<T>({}), m(op->dims().m), n(op->dims().n), ld(((op->dims().m+pad-1)/pad)*pad) {}
 
   // Some of this is replicated from MatrixMove, should think about 
   // how to nicely collapse common things. Maybe make a ConcreteMatrix 
@@ -110,25 +185,26 @@ public:
     return MatrixDims(m,n,ld);
   }
 
-  Matrix execute([[maybe_unused]] cublasHandle_t handle, Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
-    return Matrix(out_space, dims());
+  Matrix<T> execute([[maybe_unused]] cublasHandle_t handle, Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
+    return Matrix<T>(out_space, dims());
   }
 };
 
-class MatrixAccumulate : public MatrixOp {
-  double alpha, beta;
+template<typename T>
+class MatrixAccumulate : public MatrixOp<T> {
+  T alpha, beta;
   bool transpose;
 public:
-  MatrixAccumulate(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
-                   double alpha, double beta, bool transpose) : MatrixOp({}, 1) ,
+  MatrixAccumulate(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
+                   T alpha, T beta, bool transpose) : MatrixOp<T>({}, 1) ,
                      alpha(alpha), beta(beta), transpose(transpose) {
     int Am = Aop->dims().m;
     int An = Aop->dims().n;
     int Bm = Bop->dims().m;
     int Bn = Bop->dims().n;
 
-    operands.push_back(std::move(Aop));
-    operands.push_back(std::move(Bop));
+    this->operands.push_back(std::move(Aop));
+    this->operands.push_back(std::move(Bop));
 
     bool bad = false;
     if (transpose) {
@@ -147,90 +223,73 @@ public:
 
   size_t output_space_req() const override { return 0; }
 
-  MatrixDims dims() const override { return operands[1]->dims(); }
+  MatrixDims dims() const override { return this->operands[1]->dims(); }
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
-    if (out_space.size() < output_space_req() || 
-        scratch_space.size() < scratch_space_req()) {
+  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+    if (out_space.size<T>() < output_space_req() || 
+        scratch_space.size<T>() < this->scratch_space_req()) {
       std::cout << "NOT ENOUGH SPACE" << std::endl;
       throw "Not enough space";
     }
 
-    auto matrices = compute_operands(handle, out_space, scratch_space);
-    Matrix A = matrices[0];
-    Matrix B = matrices[1];
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
+    Matrix<T> A = matrices[0];
+    Matrix<T> B = matrices[1];
 
-    size_t lda = A.dims().ld;
-    size_t ldb = B.dims().ld;
-    cublasDgeam(handle,
-                transpose ? CUBLAS_OP_T : CUBLAS_OP_N, 
-                CUBLAS_OP_N,
-                B.dims().m, B.dims().n,
-                &alpha,
-                A.ptr(), lda,
-                &beta,
-                B.ptr(), ldb,
-                B.ptr(), ldb);
+    gpuTgeam(handle, transpose, false, A, B, B, alpha, beta);
     return B;
   }
 };
 
-class MatrixMove : public MatrixOp {
+template<typename T>
+class MatrixMove : public MatrixOp<T> {
 private:
-  double alpha;
+  T alpha;
   bool transpose;
   size_t pad;
 public:
-  MatrixMove(std::unique_ptr<MatrixOp> Aop, double alpha, bool transpose, size_t pad)
-      : MatrixOp({}), alpha(alpha), transpose(transpose), pad(pad) {
-    operands.push_back(std::move(Aop));
+  MatrixMove(std::unique_ptr<MatrixOp<T>> Aop, T alpha, bool transpose, size_t pad)
+      : MatrixOp<T>({}), alpha(alpha), transpose(transpose), pad(pad) {
+    this->operands.push_back(std::move(Aop));
   }
 
   size_t output_space_req() const override { return dims().footprint(); }
 
   MatrixDims dims() const override {
-    auto &Aop = operands[0];
+    auto &Aop = this->operands[0];
     size_t m = transpose ? Aop->dims().n : Aop->dims().m;
     size_t n = transpose ? Aop->dims().m : Aop->dims().n;
     size_t ld = ((m+pad-1)/pad)*pad;
     return MatrixDims(m,n,ld);
   };
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
-    if (out_space.size() < output_space_req() || 
-        scratch_space.size() < scratch_space_req()) {
+  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+    if (out_space.size<T>() < output_space_req() || 
+        scratch_space.size<T>() < this->scratch_space_req()) {
       std::cout << "NOT ENOUGH SPACE" << std::endl;
       throw "Not enough space";
     }
-    auto matrices = compute_operands(handle, out_space, scratch_space);
-    Matrix A = matrices[0];
-    Matrix B(out_space, dims());
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
+    Matrix<T> A = matrices[0];
+    Matrix<T> B(out_space, dims());
 
-    size_t lda = A.dims().ld;
-    size_t ldb = B.dims().ld;
-    double beta = 0.0;
-    cublasDgeam(handle,
-                transpose ? CUBLAS_OP_T : CUBLAS_OP_N, 
-                CUBLAS_OP_N,
-                B.dims().m, B.dims().n,
-                &alpha,
-                A.ptr(), lda,
-                &beta,
-                B.ptr(), ldb,
-                B.ptr(), ldb);
+    T beta = 0.0;
+    gpuTgeam<T>(handle, transpose, false,
+                A, B, B, alpha, beta);
     return B;
   }
 };
 
 
-class MatrixMult : public MatrixOp {
+template<typename T>
+class MatrixMult : public MatrixOp<T> {
 protected:
   bool transa, transb;
-  double alpha, beta;
+  T alpha, beta;
 public:
-  MatrixMult(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
-             std::unique_ptr<MatrixOp> Cop, bool transa, bool transb, 
-             double alpha, double beta) : MatrixOp({}, 2), transa(transa), transb(transb),
+  MatrixMult(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
+             std::unique_ptr<MatrixOp<T>> Cop, bool transa, bool transb, 
+             T alpha, T beta) : MatrixOp<T>({}, 2), transa(transa), transb(transb),
                                           alpha(alpha), beta(beta) {
     int kA = transa ? Aop->dims().m : Aop->dims().n;
     int kB = transb ? Bop->dims().n : Bop->dims().m;
@@ -245,52 +304,41 @@ public:
                 <<                ", nB=" << nB << ", nC=" << Cop->dims().n << std::endl;
     }
     
-    operands.push_back(std::move(Aop));
-    operands.push_back(std::move(Bop));
-    operands.push_back(std::move(Cop));
+    this->operands.push_back(std::move(Aop));
+    this->operands.push_back(std::move(Bop));
+    this->operands.push_back(std::move(Cop));
   }
 
   MatrixDims dims() const override {
-    auto &Cop = operands[2];
+    auto &Cop = this->operands[2];
     return Cop->dims();
   }
 
   size_t output_space_req() const override {return 0;}
 
-  virtual Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
-    auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto matrices = compute_operands(handle, out_space, scratch_space);
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
-    Matrix &A = matrices[0];
-    Matrix &B = matrices[1];
-    Matrix &C = matrices[2];
+    Matrix<T> &A = matrices[0];
+    Matrix<T> &B = matrices[1];
+    Matrix<T> &C = matrices[2];
 
-    int m = C.dims().m;
-    int n = C.dims().n;
-    int k = transa ? A.dims().m : A.dims().n;
-    cublasDgemm(handle,
-                opA, opB,
-                m, n, k,
-                &alpha,
-                A.ptr(), A.dims().ld,
-                B.ptr(), B.dims().ld,
-                &beta,
-                C.ptr(), C.dims().ld);
+    gpuTgemm<T>(handle, transa, transb, A, B, C, alpha, beta);
     return C;
   }
 
 };
 
-class MatrixMultAlloc : public MatrixOp {
+template<typename T>
+class MatrixMultAlloc : public MatrixOp<T> {
   bool transa, transb;
-  double alpha;
+  T alpha;
   size_t pad;
 public:
-  MatrixMultAlloc(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
-                  bool transa, bool transb, double alpha, size_t pad) 
-              : MatrixOp({}), transa(transa), transb(transb), alpha(alpha), pad(pad) {
+  MatrixMultAlloc(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
+                  bool transa, bool transb, T alpha, size_t pad) 
+              : MatrixOp<T>({}), transa(transa), transb(transb), alpha(alpha), pad(pad) {
     int kA = transa ? Aop->dims().m : Aop->dims().n;
     int kB = transb ? Bop->dims().n : Bop->dims().m;
     if (kA != kB) {
@@ -298,13 +346,13 @@ public:
       throw;
     }
     
-    operands.push_back(std::move(Aop));
-    operands.push_back(std::move(Bop));
+    this->operands.push_back(std::move(Aop));
+    this->operands.push_back(std::move(Bop));
   }
 
   MatrixDims dims() const override {
-    auto &Aop = operands[0];
-    auto &Bop = operands[1];
+    auto &Aop = this->operands[0];
+    auto &Bop = this->operands[1];
     size_t m = transa ? Aop->dims().n : Aop->dims().m;
     size_t n = transb ? Bop->dims().m : Bop->dims().n;
     size_t ld = ((m+pad-1)/pad)*pad;
@@ -313,127 +361,115 @@ public:
 
   size_t output_space_req() const override {return dims().footprint();}
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
-    auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto matrices = compute_operands(handle, out_space, scratch_space);
+  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
-    Matrix &A = matrices[0];
-    Matrix &B = matrices[1];
-    Matrix C(out_space, dims());
+    Matrix<T> &A = matrices[0];
+    Matrix<T> &B = matrices[1];
+    Matrix<T> C(out_space, dims());
 
-    int m = C.dims().m;
-    int n = C.dims().n;
-    int k = transa ? A.dims().m : A.dims().n;
-    double beta = 0.0;
-    cublasDgemm(handle,
-                opA, opB,
-                m, n, k,
-                &alpha,
-                A.ptr(), A.dims().ld,
-                B.ptr(), B.dims().ld,
-                &beta,
-                C.ptr(), C.dims().ld);
+    T beta = 0.0;
+    gpuTgemm<T>(handle, transa, transb, A, B, C, alpha, beta);
     return C;
   }
 
 };
 
 
-class BatchMatrixMult : public MatrixOp {
-  bool transa, transb;
-  double alpha, beta;
-public:
-  BatchMatrixMult(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
-             std::unique_ptr<MatrixOp> Cop, bool transa, bool transb, 
-             double alpha, double beta) : MatrixOp({}, 2), transa(transa), transb(transb),
-                                          alpha(alpha), beta(beta) {
-    int kA = transa ? Aop->dims().m : Aop->dims().n;
-    int kB = transb ? Bop->dims().n : Bop->dims().m;
-    if (kA != kB) {
-      std::cout << "Bad matrix mult, kA=" << kA << " kB=" << kB << std::endl;
-      throw;
-    }
-    size_t mA = transa ? Aop->dims().n : Aop->dims().m;
-    size_t nB = transb ? Bop->dims().m : Bop->dims().n;
-    if (mA != Cop->dims().m || nB != Cop->dims().n) {
-      std::cout << "Bad matrix mult, mA=" << mA << ", mC=" << Cop->dims().m
-                <<                ", nB=" << nB << ", nC=" << Cop->dims().n << std::endl;
-    }
-    
-    operands.push_back(std::move(Aop));
-    operands.push_back(std::move(Bop));
-    operands.push_back(std::move(Cop));
-  }
+// template<typename T>
+// class BatchMatrixMult : public MatrixOp<T> {
+//   bool transa, transb;
+//   T alpha, beta;
+// public:
+//   BatchMatrixMult(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
+//              std::unique_ptr<MatrixOp<T>> Cop, bool transa, bool transb, 
+//              T alpha, T beta) : MatrixOp<T>({}, 2), transa(transa), transb(transb),
+//                                           alpha(alpha), beta(beta) {
+//     int kA = transa ? Aop->dims().m : Aop->dims().n;
+//     int kB = transb ? Bop->dims().n : Bop->dims().m;
+//     if (kA != kB) {
+//       std::cout << "Bad matrix mult, kA=" << kA << " kB=" << kB << std::endl;
+//       throw;
+//     }
+//     size_t mA = transa ? Aop->dims().n : Aop->dims().m;
+//     size_t nB = transb ? Bop->dims().m : Bop->dims().n;
+//     if (mA != Cop->dims().m || nB != Cop->dims().n) {
+//       std::cout << "Bad matrix mult, mA=" << mA << ", mC=" << Cop->dims().m
+//                 <<                ", nB=" << nB << ", nC=" << Cop->dims().n << std::endl;
+//     }
+//     
+//     this->operands.push_back(std::move(Aop));
+//     this->operands.push_back(std::move(Bop));
+//     this->operands.push_back(std::move(Cop));
+//   }
+// 
+//   MatrixDims dims() const override {
+//     auto &Cop = this->operands[2];
+//     return Cop->dims();
+//   }
+// 
+//   size_t output_space_req() const override {return 0;}
+// 
+//   Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+// 
+//     auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
+//     auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
+//     auto matrices = compute_operands(handle, out_space, scratch_space);
+// 
+//     Matrix<T> &A = matrices[0];
+//     Matrix<T> &B = matrices[1];
+//     Matrix<T> &C = matrices[2];
+// 
+//     int m = C.dims().m;
+//     int n = C.dims().n;
+//     int k = transa ? A.dims().m : A.dims().n;
+// 
+//     const int mblock = 4;
+//     const int block_count = m/mblock;
+//     if (m % mblock != 0) throw "aaa";
+// 
+//     std::vector<T*> Ablocks;
+//     std::vector<T*> Bblocks;
+//     std::vector<T*> Cblocks;
+//     for (int i = 0; i < m; i += mblock) {
+//       Ablocks.push_back(&A.ptr()[i]);
+//       Bblocks.push_back(B.ptr());
+//       Cblocks.push_back(&C.ptr()[i]);
+//     }
+// 
+//     cublasDgemmBatched(handle, opA, opB,
+//                        mblock, n, k,
+//                        &alpha,
+//                        Ablocks.data(), A.dims().ld,
+//                        Bblocks.data(), B.dims().ld,
+//                        &beta,
+//                        Cblocks.data(), C.dims().ld,
+//                        block_count);
+//     return C;
+//   }
+// };
 
-  MatrixDims dims() const override {
-    auto &Cop = operands[2];
-    return Cop->dims();
-  }
-
-  size_t output_space_req() const override {return 0;}
-
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
-
-    auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto matrices = compute_operands(handle, out_space, scratch_space);
-
-    Matrix &A = matrices[0];
-    Matrix &B = matrices[1];
-    Matrix &C = matrices[2];
-
-    int m = C.dims().m;
-    int n = C.dims().n;
-    int k = transa ? A.dims().m : A.dims().n;
-
-    const int mblock = 4;
-    const int block_count = m/mblock;
-    if (m % mblock != 0) throw "aaa";
-
-    std::vector<double*> Ablocks;
-    std::vector<double*> Bblocks;
-    std::vector<double*> Cblocks;
-    for (int i = 0; i < m; i += mblock) {
-      Ablocks.push_back(&A.ptr()[i]);
-      Bblocks.push_back(B.ptr());
-      Cblocks.push_back(&C.ptr()[i]);
-    }
-
-    cublasDgemmBatched(handle, opA, opB,
-                       mblock, n, k,
-                       &alpha,
-                       Ablocks.data(), A.dims().ld,
-                       Bblocks.data(), B.dims().ld,
-                       &beta,
-                       Cblocks.data(), C.dims().ld,
-                       block_count);
-    return C;
-  }
-};
-
-class TiledMatrixMult : public MatrixMult {
+template<typename T>
+class TiledMatrixMult : public MatrixMult<T> {
   int mblock, nblock, kblock;
 public:
-  TiledMatrixMult(std::unique_ptr<MatrixOp> Aop, std::unique_ptr<MatrixOp> Bop,
-                  std::unique_ptr<MatrixOp> Cop, bool transa, bool transb, 
-                  double alpha, double beta, int mblock, int nblock, int kblock) 
-        : MatrixMult(std::move(Aop), std::move(Bop), std::move(Cop), transa, transb, alpha, beta),
+  TiledMatrixMult(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
+                  std::unique_ptr<MatrixOp<T>> Cop, bool transa, bool transb, 
+                  T alpha, T beta, int mblock, int nblock, int kblock) 
+        : MatrixMult<T>(std::move(Aop), std::move(Bop), std::move(Cop), transa, transb, alpha, beta),
           mblock(mblock), nblock(nblock), kblock(kblock) {}
 
-  Matrix execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
-    auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
-    auto matrices = compute_operands(handle, out_space, scratch_space);
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
-    Matrix &A = matrices[0];
-    Matrix &B = matrices[1];
-    Matrix &C = matrices[2];
+    Matrix<T> &A = matrices[0];
+    Matrix<T> &B = matrices[1];
+    Matrix<T> &C = matrices[2];
 
     int m = C.dims().m;
     int n = C.dims().n;
-    int k = transa ? A.dims().m : A.dims().n;
+    int k = this->transa ? A.dims().m : A.dims().n;
 
     for (int a = 0; a < m; a += mblock) {
       for (int b = 0; b < n; b += nblock) {
@@ -442,16 +478,13 @@ public:
           int nsize = std::min(nblock, n-b);
           int ksize = std::min(kblock, k-c);
 
-          double bet = beta;
+          T bet = this->beta;
           if (c > 0) bet = 1.0;
-          cublasDgemm(handle,
-                      opA, opB,
-                      msize, nsize, ksize,
-                      &alpha,
-                      &A.ptr()[c*A.dims().ld + a], A.dims().ld,
-                      &B.ptr()[b*B.dims().ld + c], B.dims().ld,
-                      &bet,
-                      &C.ptr()[b*C.dims().ld + a], C.dims().ld);
+          Matrix<T> Ablock = A.block(a, c, msize, ksize);
+          Matrix<T> Bblock = B.block(c, b, ksize, nsize);
+          Matrix<T> Cblock = C.block(a, b, msize, nsize);
+          gpuTgemm<T>(handle, this->transa, this->transb, 
+                      Ablock, Bblock, Cblock, this->alpha, bet);
         }
       }
     }

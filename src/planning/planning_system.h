@@ -93,7 +93,7 @@ public:
   }
 
   void execute(Params params, Opts opts, Workspace space, Stream s) {
-    if (space.size() < executor.calculate_workspace(params, opts)) {
+    if (space.size<char>() < executor.calculate_workspace(params, opts)) {
       opts = degrade_plan(params, opts, space);
     }
 
@@ -123,8 +123,11 @@ public:
 
 
 
-template class Planning_System<GEMM_Executor>;
-using GEMM_Planner = Planning_System<GEMM_Executor>;
+template class Planning_System<GEMM_Executor<double>>;
+using GEMM_Planner = Planning_System<GEMM_Executor<double>>;
+
+template class Planning_System<GEMM_Executor<float>>;
+using SGEMM_Planner = Planning_System<GEMM_Executor<float>>;
 
 }
 

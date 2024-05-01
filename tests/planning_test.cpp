@@ -4,11 +4,12 @@
 
 class Planning_Test : public BLAS_Test {};
 
-class Dummy_Op : public MatrixOp {
+template<typename T>
+class Dummy_Op : public MatrixOp<T> {
 public:
-  Dummy_Op() : MatrixOp({}) {}
-  Matrix execute(cublasHandle_t, Workspace, Workspace) override {
-    return Matrix();
+  Dummy_Op() : MatrixOp<T>({}) {}
+  Matrix<T> execute(cublasHandle_t, Workspace, Workspace) override {
+    return Matrix<T>();
   }
 
   size_t output_space_req()  const override {return 0;}
@@ -52,7 +53,7 @@ struct Dummy_Opts {
 
   static Dummy_Opts default_opts() {return Dummy_Opts();}
 
-  std::unique_ptr<MatrixOp> form_operation(Dummy_Params) {return std::make_unique<Dummy_Op>();}
+  std::unique_ptr<MatrixOp<double>> form_operation(Dummy_Params) {return std::make_unique<Dummy_Op<double>>();}
 };
 
 
@@ -89,13 +90,13 @@ TEST_F(Planning_Test, GEMM_Correctness) {
   int n = 16;
   int k = 35;
 
-  TestMatrix A(m,k,m);
-  TestMatrix B(k,n,k);
-  TestMatrix C(m,n,m);
+  TestMatrix<double> A(m,k,m);
+  TestMatrix<double> B(k,n,k);
+  TestMatrix<double> C(m,n,m);
 
   double alpha = 1.0;
 
-  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+  GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
 
   for (int i=0; i<10; i++) {
     for (auto &plan : GEMM_Options::enumerate()) {
@@ -120,13 +121,13 @@ TEST_F(Planning_Test, Hello) {
   size_t n = 125;
   size_t k = 318;
 
-  TestMatrix A(m,k,m);
-  TestMatrix B(k,n,k);
-  TestMatrix C(m,n,m);
+  TestMatrix<double> A(m,k,m);
+  TestMatrix<double> B(k,n,k);
+  TestMatrix<double> C(m,n,m);
 
   double alpha = 1.0;
 
-  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+  GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
 
   ManagedWorkspace space(1024);
   for (int j=0; j<2; j++) {
@@ -135,7 +136,7 @@ TEST_F(Planning_Test, Hello) {
       GEMM_Options plan = planner.create_plan(inputs);
 
       size_t req = planner.calculate_workspace(inputs, plan)*sizeof(double);
-      space.grow_to_fit(req);
+      space.grow_to_fit<double>(req);
 
       planner.execute(inputs, plan, space, s);
     }
@@ -152,12 +153,12 @@ TEST_F(Planning_Test, Plan_Degradation) {
   size_t n = 123;
   size_t k = 42;
 
-  TestMatrix A(m,k,m);
-  TestMatrix B(k,n,k);
-  TestMatrix C(m,n,m);
+  TestMatrix<double> A(m,k,m);
+  TestMatrix<double> B(k,n,k);
+  TestMatrix<double> C(m,n,m);
 
   double alpha = 1.0;
-  GEMM_Inputs inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+  GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
 
   for (auto &plan : GEMM_Options::enumerate()) {
     planner.execute(inputs, plan, Workspace(), s);

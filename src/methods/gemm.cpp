@@ -87,11 +87,12 @@ std::istream& operator>>(std::istream &is, GEMM_Options &opts) {
   return is;
 }
 
-std::unique_ptr<MatrixOp> GEMM_Options::form_operation(GEMM_Inputs params) {
+template<typename T>
+std::unique_ptr<MatrixOp<T>> GEMM_Options::form_operation(GEMM_Inputs<T> params) {
 
-  std::unique_ptr<MatrixOp> A = std::make_unique<NoOp>(params.A);
-  std::unique_ptr<MatrixOp> B = std::make_unique<NoOp>(params.B);
-  std::unique_ptr<MatrixOp> C = std::make_unique<NoOp>(params.C);
+  std::unique_ptr<MatrixOp<T>> A = std::make_unique<NoOp<T>>(params.A);
+  std::unique_ptr<MatrixOp<T>> B = std::make_unique<NoOp<T>>(params.B);
+  std::unique_ptr<MatrixOp<T>> C = std::make_unique<NoOp<T>>(params.C);
 
   bool ta = transa == BLAS_Op::TRANS;
   bool tb = transb == BLAS_Op::TRANS;
@@ -103,39 +104,45 @@ std::unique_ptr<MatrixOp> GEMM_Options::form_operation(GEMM_Inputs params) {
   if (ta) 
     params.transa = switch_op(params.transa);
   if (ta || pa)
-    A = std::make_unique<MatrixMove>(
+    A = std::make_unique<MatrixMove<T>>(
         std::move(A), 1.0, ta, pa ? 32 : 1);
 
   if (tb)
     params.transb = switch_op(params.transb);
   if (tb || pb)
-    B = std::make_unique<MatrixMove>(
+    B = std::make_unique<MatrixMove<T>>(
         std::move(B), 1.0, tb, pb ? 32 : 1);
 
   if (tc) {
-    auto scratch = std::make_unique<MatrixMultAlloc>(
+    auto scratch = std::make_unique<MatrixMultAlloc<T>>(
         std::move(B), std::move(A), 
         params.transb != CUBLAS_OP_T, 
         params.transa != CUBLAS_OP_T, 
         params.alpha, pc ? 32 : 1);
 
-    return std::make_unique<MatrixAccumulate>(
+    return std::make_unique<MatrixAccumulate<T>>(
         std::move(scratch), std::move(C), 
         1.0, params.beta, true);
   } else if (pc) {
-    auto scratch = std::make_unique<MatrixMultAlloc>(
+    auto scratch = std::make_unique<MatrixMultAlloc<T>>(
         std::move(A), std::move(B),
         params.transa == CUBLAS_OP_T, 
         params.transb == CUBLAS_OP_T, 
         params.alpha, 32);
 
-    return std::make_unique<MatrixAccumulate>(
+    return std::make_unique<MatrixAccumulate<T>>(
         std::move(scratch), std::move(C), 
         1.0, params.beta, false);
   } else {
-    return std::make_unique<MatrixMult>(
+    return std::make_unique<MatrixMult<T>>(
         std::move(A), std::move(B), std::move(C), 
         params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
         params.alpha, params.beta);
   }
 }
+
+template std::unique_ptr<MatrixOp<double>> 
+  GEMM_Options::form_operation(GEMM_Inputs<double>);
+
+template std::unique_ptr<MatrixOp<float>> 
+  GEMM_Options::form_operation(GEMM_Inputs<float>);

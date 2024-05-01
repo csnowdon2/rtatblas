@@ -2,21 +2,22 @@
 #include <string>
 #include <vector>
 #include <matrixop.h>
-#include "executor.h"
+#include <executor.h>
 #include "base_options.h"
 
 namespace rtat {
 
+template<typename T>
 struct GEMM_Inputs {
   cublasHandle_t handle;
   cublasOperation_t transa; cublasOperation_t transb;
-  const Matrix A;
-  const Matrix B;
-        Matrix C;
+  const Matrix<T> A;
+  const Matrix<T> B;
+        Matrix<T> C;
   const double alpha; const double beta;
 
   GEMM_Inputs(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-              const Matrix A, const Matrix B, Matrix C, double alpha, double beta)
+              const Matrix<T> A, const Matrix<T> B, Matrix<T> C, double alpha, double beta)
         : handle(handle), transa(transa), transb(transb), A(A), B(B), C(C), 
           alpha(alpha), beta(beta) {}
 
@@ -30,7 +31,8 @@ struct GEMM_Key {
   cublasOperation_t transa; cublasOperation_t transb;
   int m; int n; int k;
 
-  GEMM_Key(GEMM_Inputs i) : transa(i.transa), transb(i.transb), 
+  template<typename T>
+  GEMM_Key(GEMM_Inputs<T> i) : transa(i.transa), transb(i.transb), 
                             m(i.m()), n(i.n()), k(i.k()) {}
 
   GEMM_Key(cublasOperation_t transa, cublasOperation_t transb,
@@ -72,13 +74,15 @@ struct GEMM_Options {
   friend std::ostream& operator<<(std::ostream&, const GEMM_Options);
   friend std::istream& operator>>(std::istream&, GEMM_Options&); 
 
-  std::unique_ptr<MatrixOp> form_operation(GEMM_Inputs);
+  template<typename T>
+  std::unique_ptr<MatrixOp<T>> form_operation(GEMM_Inputs<T>);
 };
 
 
-class GEMM_Executor : public Executor<GEMM_Inputs, GEMM_Key, GEMM_Options> {
+template<typename T>
+class GEMM_Executor : public Executor<GEMM_Inputs<T>, GEMM_Key, GEMM_Options> {
 protected:
-  void warmup(GEMM_Inputs params, [[maybe_unused]] GEMM_Options opts,
+  void warmup(GEMM_Inputs<T> params, [[maybe_unused]] GEMM_Options opts,
               [[maybe_unused]] Stream s) override {
     size_t n = 8;
     double *A, *B, *C;

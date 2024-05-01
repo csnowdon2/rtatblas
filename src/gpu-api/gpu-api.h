@@ -39,6 +39,9 @@
 #define cublasDgeam hipblasDgeam
 #define cublasDgemm hipblasDgemm
 #define cublasDgemmBatched hipblasDgemmBatched
+#define cublasSgeam hipblasSgeam
+#define cublasSgemm hipblasSgemm
+#define cublasSgemmBatched hipblasSgemmBatched
 #define cublasGetStream hipblasGetStream
 #define cublasSetStream hipblasSetStream
 #define cublasHandle_t hipblasHandle_t
@@ -157,5 +160,14 @@ public:
 private:
   std::shared_ptr<Raw_Event> raw_event;
 };
+
+//cublasDgemm(handle,
+//            opA, opB,
+//            msize, nsize, ksize,
+//            &this->alpha,
+//            &A.ptr()[c*A.dims().ld + a], A.dims().ld,
+//            &B.ptr()[b*B.dims().ld + c], B.dims().ld,
+//            &bet,
+//            &C.ptr()[b*C.dims().ld + a], C.dims().ld);
 
 }

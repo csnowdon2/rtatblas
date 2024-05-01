@@ -23,27 +23,29 @@ protected:
 
 class ManagedWorkspace : public Workspace {
 public:
-  ManagedWorkspace(size_t doubles) : Workspace() {
-    gpuAssert(cudaMalloc(&ptr, doubles*sizeof(double)));
-    count = doubles;
+  ManagedWorkspace(size_t bytes) : Workspace() {
+    gpuAssert(cudaMalloc(&ptr, bytes));
+    count = bytes;
   }
   ~ManagedWorkspace() { gpuAssert(cudaFree(ptr)); }
 
-  void grow_to_fit(size_t doubles) {
-    if (size() < doubles) {
+  template<typename T>
+  void grow_to_fit(size_t new_count) {
+    if (size<T>() < new_count) {
       gpuAssert(cudaDeviceSynchronize());
       gpuAssert(cudaFree(ptr));
-      gpuAssert(cudaMalloc(&ptr, doubles));
-      count = doubles;
+      gpuAssert(cudaMalloc(&ptr, new_count));
+      count = new_count;
     }
   }
 };
 
+template<typename T>
 class TestMatrix {
 public:
   TestMatrix(size_t m, size_t n) : TestMatrix(m,n,m) {}
 
-  TestMatrix(size_t m, size_t n, size_t ld) : m(m), n(n), ld(ld), space(footprint()), 
+  TestMatrix(size_t m, size_t n, size_t ld) : m(m), n(n), ld(ld), space(footprint()*sizeof(T)), 
                                               host_vector(footprint()) {
     if (ld < m) throw "Bad matrix ld";
 
@@ -58,20 +60,20 @@ public:
 
   size_t footprint() {return ld*n;}
 
-  std::vector<double> host_vector;
+  std::vector<T> host_vector;
 
   void upload() {
-    gpuAssert(cudaMemcpy(space, host_vector.data(), host_vector.size()*sizeof(double), 
+    gpuAssert(cudaMemcpy(space, host_vector.data(), host_vector.size()*sizeof(T), 
                          cudaMemcpyHostToDevice));
   }
 
   void download() {
-    gpuAssert(cudaMemcpy(host_vector.data(), space, host_vector.size()*sizeof(double), 
+    gpuAssert(cudaMemcpy(host_vector.data(), space, host_vector.size()*sizeof(T), 
                          cudaMemcpyDeviceToHost));
   }
 
   void randomize_host() {
-    std::uniform_real_distribution<double> unif(-1.0, 1.0);
+    std::uniform_real_distribution<T> unif(-1.0, 1.0);
     std::default_random_engine re;
 
     for (auto &x : host_vector) x = unif(re);
@@ -81,19 +83,19 @@ public:
     for (auto &x : host_vector) x = 0.0;
   }
 
-  void insert(Matrix A) {
+  void insert(Matrix<T> A) {
     if (A.dims().m != m || A.dims().n != n || A.dims().ld != ld) {
       std::cout << "Bad matrix insert" << std::endl;
       throw;
     }
 
-    std::cout << "Size = " << footprint()*sizeof(double) << std::endl;
-    gpuAssert(cudaMemcpy(space, A.ptr(), footprint()*sizeof(double), 
+    std::cout << "Size = " << footprint()*sizeof(T) << std::endl;
+    gpuAssert(cudaMemcpy(space, A.ptr(), footprint()*sizeof(T), 
                          cudaMemcpyDeviceToDevice));
   }
 
-  Matrix matrix() {
-    return Matrix(space, m, n, ld);
+  Matrix<T> matrix() {
+    return Matrix<T>(space, m, n, ld);
   }
 
   friend bool operator==(const TestMatrix &A, const TestMatrix &B) {
@@ -124,10 +126,11 @@ public:
 
   Workspace workspace() {return space;}
 
-  operator Matrix() {return matrix();}
+  operator Matrix<T>() {return matrix();}
 };
 
-inline void test_gemm(TestMatrix &A, TestMatrix &B, TestMatrix &C, double alpha, double beta, bool transa, bool transb) {
+template<typename T>
+inline void test_gemm(TestMatrix<T> &A, TestMatrix<T> &B, TestMatrix<T> &C, T alpha, T beta, bool transa, bool transb) {
   auto ixA = [&](int i, int j) {return transa ? i*A.ld+j : j*A.ld+i;};
   auto ixB = [&](int i, int j) {return transb ? i*B.ld+j : j*B.ld+i;};
 

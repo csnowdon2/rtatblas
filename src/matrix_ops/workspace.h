@@ -5,17 +5,19 @@
 
 namespace rtat {
 
+template<typename T>
 class Matrix;
 
 class Workspace {
-  friend class Matrix;
 protected:
   size_t count;
-  double* ptr;
+  char* ptr;
 public:
 
-  Workspace(double* ptr, size_t count) : count(count), ptr(ptr) {}
-  Workspace() : Workspace(nullptr, 0) {}
+  template<typename T>
+  Workspace(T* ptr, size_t count) : count(count*sizeof(T)), ptr(ptr) {}
+
+  Workspace() : count(0), ptr(nullptr) {}
   virtual ~Workspace() = default;
 
   Workspace(Workspace other, size_t offset, size_t count) 
@@ -26,17 +28,24 @@ public:
     }
   }
 
+  template<typename T>
   Workspace peel(size_t size) {
-    Workspace newspace(ptr, size);
-    ptr += size;
-    count -= size;
+    size_t bytes = size*sizeof(T);
+
+    Workspace newspace(ptr, bytes);
+    ptr += bytes;
+    count -= bytes;
     return newspace;
   }
 
-  double& operator[](size_t ix) {return ptr[ix];}
-  operator double*() {return ptr;}
+  template<typename T>
+  T& operator[](size_t ix) {return ptr[ix];}
 
-  size_t size() {return count;}
+  template<typename T>
+  operator T*() {return (T*)ptr;}
+
+  template<typename T>
+  size_t size() {return count/sizeof(T);}
 };
 
 }

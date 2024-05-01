@@ -39,13 +39,13 @@ public:
 
   virtual size_t calculate_workspace(Params params, Opts opts) {
     auto operation = opts.form_operation(params);
-    return operation->workspace_req();
+    return operation->workspace_req_bytes();
   }
 protected:
   virtual void internal_execute(Params params, Opts opts, Workspace space,
                         [[maybe_unused]] Stream s) {
     auto operation = opts.form_operation(params);
-    if (operation->workspace_req() > space.size()) {
+    if (operation->workspace_req_bytes() > space.size<char>()) {
       throw "internal_execute: Insufficient workspace";
     }
     operation->execute(params.handle, Workspace(), space);

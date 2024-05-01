@@ -23,6 +23,9 @@ target_link_libraries(timing_test timing GTest::gtest_main)
 add_executable(plan_test plan_test.cpp)
 target_link_libraries(plan_test gpu-api timing GTest::gtest_main)
 
+add_executable(workspace_test workspace_test.cpp)
+target_link_libraries(workspace_test matrix_ops GTest::gtest_main)
+
 add_executable(matrix_ops_test matrixop_test.cpp)
 target_link_libraries(matrix_ops_test gpu-api matrix_ops GTest::gtest_main)
 
