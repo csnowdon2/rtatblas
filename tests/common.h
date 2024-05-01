@@ -127,7 +127,7 @@ public:
   operator Matrix() {return matrix();}
 };
 
-void test_gemm(TestMatrix &A, TestMatrix &B, TestMatrix &C, double alpha, double beta, bool transa, bool transb) {
+inline void test_gemm(TestMatrix &A, TestMatrix &B, TestMatrix &C, double alpha, double beta, bool transa, bool transb) {
   auto ixA = [&](int i, int j) {return transa ? i*A.ld+j : j*A.ld+i;};
   auto ixB = [&](int i, int j) {return transb ? i*B.ld+j : j*B.ld+i;};
 

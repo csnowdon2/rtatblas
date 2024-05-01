@@ -5,7 +5,8 @@
 #include <numeric>
 
 #include <gemm.h>
-#include "predicates.h"
+#include <predicates.h>
+#include "planner_statistics.h"
 
 namespace rtat {
 
@@ -105,6 +106,18 @@ public:
 
   size_t calculate_workspace(Params params, Opts opts) {
     return executor.calculate_workspace(params, opts);
+  }
+
+  Planner_Statistics<Key,Opts> make_statistics() {
+    std::map<Key, std::map<Opts, std::vector<float>>> times;
+    auto &timings = executor.get_timings();
+    for (auto &[key, opt_map] : timings) {
+      for (auto &[opt, timer_bank] : opt_map) {
+        timer_bank.synchronize();
+        times[key][opt] = timer_bank.get_times();
+      }
+    }
+    return Planner_Statistics(times);
   }
 };
 

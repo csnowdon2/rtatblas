@@ -31,9 +31,8 @@ struct Dummy_Key {
 };
 
 
-class Dummy_Opts {
+struct Dummy_Opts {
   int i;
-public:
   Dummy_Opts(int i) : i(i) {}
   Dummy_Opts() : i(0) {}
 
@@ -45,7 +44,7 @@ public:
   }
 
   static std::vector<Dummy_Opts> enumerate() {
-    return {Dummy_Opts(0), Dummy_Opts(1), Dummy_Opts(2)};
+    return {Dummy_Opts(1), Dummy_Opts(2), Dummy_Opts(3)};
   }
 
   bool operator<(const Dummy_Opts& o) const {return i < o.i;}
@@ -62,13 +61,24 @@ class Dummy_Executor : public Executor<Dummy_Params, Dummy_Key, Dummy_Opts> {
 };
 
 
-TEST_F(Planning_Test, Raw_Planner) {
+TEST_F(Planning_Test, Dummy_Planner) {
   Planning_System<Dummy_Executor> planner;  
 
-  for (int i=0; i<4; i++) {
+  const int N = 4;
+  for (int i=0; i<N; i++) {
     Dummy_Params params(handle, i);
-    for (auto opts : Dummy_Opts::enumerate())
-      planner.execute(params, opts, Workspace(), s);
+    for (auto opts : Dummy_Opts::enumerate()) {
+      for (int j=0; j<opts.i; j++)
+        planner.execute(params, opts, Workspace(), s);
+    }
+  }
+
+  auto stats = planner.make_statistics();
+  EXPECT_EQ(stats.get_counts().size(), N);
+  for (auto &[key, opt_map] : stats.get_counts()) {
+    EXPECT_EQ(opt_map.size(), Dummy_Opts::enumerate().size());
+    for (auto &[opt, count] : opt_map)
+      EXPECT_EQ(opt.i, count);
   }
 }
 
