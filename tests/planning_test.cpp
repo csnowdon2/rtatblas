@@ -4,6 +4,74 @@
 
 class Planning_Test : public BLAS_Test {};
 
+class Dummy_Op : public MatrixOp {
+public:
+  Dummy_Op() : MatrixOp({}) {}
+  Matrix execute(cublasHandle_t, Workspace, Workspace) override {
+    return Matrix();
+  }
+
+  size_t output_space_req()  const override {return 0;}
+  MatrixDims dims() const override {return MatrixDims();}
+};
+
+
+struct Dummy_Params {
+  cublasHandle_t handle;
+  int i;
+  Dummy_Params(cublasHandle_t handle, int i) 
+    : handle(handle), i(i) {}
+};
+
+
+struct Dummy_Key {
+  int i;
+  Dummy_Key(Dummy_Params p) : i(p.i) {}
+  bool operator<(const Dummy_Key& o) const {return i < o.i;}
+};
+
+
+class Dummy_Opts {
+  int i;
+public:
+  Dummy_Opts(int i) : i(i) {}
+  Dummy_Opts() : i(0) {}
+
+  operator std::string() const {return std::to_string(i);}
+  friend std::ostream& operator<<(std::ostream& os, 
+                                  const Dummy_Opts opts) {
+    os << opts.i;
+    return os;
+  }
+
+  static std::vector<Dummy_Opts> enumerate() {
+    return {Dummy_Opts(0), Dummy_Opts(1), Dummy_Opts(2)};
+  }
+
+  bool operator<(const Dummy_Opts& o) const {return i < o.i;}
+  // friend std::istream& operator>>(std::istream&, GEMM_Options&); 
+
+  static Dummy_Opts default_opts() {return Dummy_Opts();}
+
+  std::unique_ptr<MatrixOp> form_operation(Dummy_Params) {return std::make_unique<Dummy_Op>();}
+};
+
+
+class Dummy_Executor : public Executor<Dummy_Params, Dummy_Key, Dummy_Opts> {
+  void warmup(Dummy_Params, Dummy_Opts, Stream) override {};
+};
+
+
+TEST_F(Planning_Test, Raw_Planner) {
+  Planning_System<Dummy_Executor> planner;  
+
+  for (int i=0; i<4; i++) {
+    Dummy_Params params(handle, i);
+    for (auto opts : Dummy_Opts::enumerate())
+      planner.execute(params, opts, Workspace(), s);
+  }
+}
+
 TEST_F(Planning_Test, GEMM_Correctness) {
   GEMM_Planner planner;
 
