@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../src/planning_system.h"
+#include <planning_system.h>
 #include "common.h"
 
 class Planning_Test : public BLAS_Test {};

@@ -1,15 +1,10 @@
 #pragma once
 
 #include <map>
-#include <iostream>
-
 #include <gpu-api.h>
-#include <timer_bank.h>
 #include <numeric>
 
-#include "matrix_ops/matrixop.h"
-//#include "plan.h"
-#include "methods/gemm.h"
+#include <gemm.h>
 #include "predicates.h"
 
 namespace rtat {
@@ -36,45 +31,6 @@ public:
 
     return ret;
   }
-};
-
-template<typename Params, typename Key, typename Opts>
-class Executor {
-public:
-  typedef Params Params_T;
-  typedef Key    Key_T;
-  typedef Opts   Opts_T;
-
-  Executor() = default;
-  virtual ~Executor() = default;
-
-  virtual void execute(Params params, Opts opts, 
-                       Workspace space, Stream s, 
-                       Device_Timer::Mode sync = Device_Timer::ASYNCHRONOUS) {
-
-    if (!warm) {
-      warmup(params, opts, s);
-      warm = true;
-    }
-
-    Device_Timer timer([&](const Stream &str) {
-      internal_execute(params, opts, space, str);
-    }, s, sync);
-
-    timer_log[params][opts].append(timer);
-  }
-
-
-  std::map<Key, std::map<Opts, Timer_Bank>>& get_timings() {return timer_log;}
-  std::map<Opts, Timer_Bank>& get_timings(Key key) {return timer_log[key];}
-
-  virtual size_t calculate_workspace(Params, Opts) = 0;
-protected:
-  virtual void internal_execute(Params, Opts, Workspace, Stream) = 0;
-  virtual void warmup(Params, Opts, Stream) = 0;
-  std::map<Key, std::map<Opts, Timer_Bank>> timer_log;  
-
-  bool warm = false;
 };
 
 
@@ -153,47 +109,9 @@ public:
 };
 
 
-class GEMM_Executor : public Executor<GEMM_Inputs, GEMM_Key, GEMM_Options> {
-public:
-  size_t calculate_workspace(GEMM_Inputs params, GEMM_Options opts) override {
-    auto mult = opts.form_operation(params);
-    return mult->workspace_req();
-  }
-
-protected:
-
-  void warmup(GEMM_Inputs params, [[maybe_unused]] GEMM_Options opts,
-              [[maybe_unused]] Stream s) override {
-    size_t n = 8;
-    double *A, *B, *C;
-    gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
-
-    std::vector<cublasOperation_t> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
-
-    for (auto &opA : ops) {
-      for (auto &opB : ops) {
-        double alpha = 1.0;
-        double beta = 0.0;
-        cublasDgemm(params.handle, opA, opB, n,n,n, &alpha, A,n,B,n, &beta, C,n);
-        cublasDgeam(params.handle, opA, opB, n,n, &alpha, A, n, &beta, B, n, C, n);
-      }
-    }
-    gpuAssert(cudaDeviceSynchronize());
-  }
-
-  void internal_execute(GEMM_Inputs params, GEMM_Options opts, Workspace space,
-                        [[maybe_unused]] Stream s) override {
-    auto mult = opts.form_operation(params);
-    if (mult->workspace_req() > space.size()) {
-      throw "GEMM internal_execute: Insufficient workspace";
-    }
-    mult->execute(params.handle, Workspace(), space);
-  }
-};
 
 template class Planning_System<GEMM_Executor>;
 using GEMM_Planner = Planning_System<GEMM_Executor>;
 
 }
+
