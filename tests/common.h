@@ -109,9 +109,15 @@ public:
   }
 
   bool is_zero() {
+    T epsilon = 0;
+    if constexpr(std::is_same_v<T,float>) {
+      epsilon = 1e-4;
+    } else if constexpr(std::is_same_v<T,double>) {
+      epsilon = 1e-10;
+    }
     for (size_t i = 0; i < m; i++) 
       for (size_t j = 0; j < n; j++) 
-        if (abs(host_vector[j*ld+i]) > 1e-10) return false;
+        if (abs(host_vector[j*ld+i]) > epsilon) return false;
     return true;
   }
 
