@@ -13,12 +13,12 @@ cublasOperation_t read_op(std::string op) {
 Workspace allocate_workspace(size_t size) {
   double *ptr;
   gpuAssert(cudaMalloc(&ptr, size));
-  return Workspace(ptr, size);
+  return Workspace(ptr, size/sizeof(double));
 }
 
-Matrix allocate_matrix(size_t m, size_t n) {
+Matrix<double> allocate_matrix(size_t m, size_t n) {
   size_t size = m*n*sizeof(double);
-  return Matrix(allocate_workspace(size), m, n, m);
+  return Matrix<double>(allocate_workspace(size), m, n, m);
 }
 
 int main(int argc, char *argv[]) {
@@ -59,8 +59,6 @@ int main(int argc, char *argv[]) {
 
     space = allocate_workspace(workspace_req);
   }
-
-  // DO WARMUP
 
   for (auto &plan : plans)
     for (int i = 0; i < reps; i++) 

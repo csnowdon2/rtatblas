@@ -1,9 +1,9 @@
 #pragma once
 #include "problemset.h"
-#include "json_planner.h"
 #include <planning_system.h>
 #include <iostream>
 #include <stack>
+#include <rtat.h>
 
 namespace rtat {
 
@@ -20,29 +20,31 @@ public:
 
   void pop() { stack.pop(); }
 
-  double* alloc(size_t doubles) {
-    doubles = (doubles/32)*32;
+  template<typename T>
+  T* alloc(size_t count) {
+    count = (count/(512/sizeof(T)))*(512/sizeof(T));
 
     size_t pos = (stack.size() == 0) ? 0 : stack.top();
-    if ((pos+doubles)*sizeof(double) > size) {
+    if ((pos+count)*sizeof(T) > size) {
       std::cout << "OVER-ALLOCATION" << std::endl;
-      std::cout << "At " << pos*sizeof(double) << "/" << size << std::endl;
-      std::cout << "Requested " << doubles*sizeof(double) << std::endl;
+      std::cout << "At " << pos*sizeof(T) << "/" << size << std::endl;
+      std::cout << "Requested " << count*sizeof(T) << std::endl;
       throw;
     }
 
-    stack.push(pos+doubles);
+    stack.push(pos+count*sizeof(T));
 
-    rng.uniform(&ptr[pos], doubles);
+    rng.uniform<T>((T*)&ptr[pos], count);
 
-    return &ptr[pos];
+    return (T*)&ptr[pos];
   }
 
-  Matrix allocate_matrix(int m, int n) {
+  template<typename T>
+  Matrix<T> allocate_matrix(int m, int n) {
     size_t size = (size_t)(m)*(size_t)(n);
-    Workspace space(alloc(size), size);
+    Workspace space(alloc<T>(size), size);
 
-    Matrix A(space, m, n, m);
+    Matrix<T> A(space, m, n, m);
     return A;
   }
 
@@ -52,7 +54,7 @@ public:
   }
 };
 
-size_t avail_gpu_mem() {
+inline size_t avail_gpu_mem() {
   size_t free, total;
   gpuAssert(cudaMemGetInfo(&free, &total));
   return free;
@@ -63,59 +65,33 @@ protected:
   GPU_Stack_Buffer mem;
   cublasHandle_t handle;
   Stream s;
-  JSON_Planner<GEMM_Planner> planner;
-
-  //std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> make_preds() {
-  //  std::vector<Predicate<std::pair<GEMM_Options, GEMM_Inputs>>> ret;
-  //  ret.emplace_back(exclude_option(CUBLAS_OP_T,CUBLAS_OP_T));
-  //  ret.emplace_back(exclude_option(CUBLAS_OP_T,CUBLAS_OP_N));
-  //  return ret;
-  //}
+  rtat planners;
 
 public:
-  void json_output(std::ostream &os) { planner.json_output(os); }
-  void json_output(std::string filename) { planner.json_output(filename); }
+  rtat& get_rtat() { return planners; }
+  void json_output(std::ostream &os) { os << std::setw(2) << planners.gemm_planner<double>().make_statistics().json(); }
+  void json_output(std::string filename) { std::ofstream file(filename); json_output(file); }
   
 
-  Runner() : mem((size_t)(((double)avail_gpu_mem())*0.9)), 
-             planner({}, 1){
+  Runner() : mem((size_t)(((double)avail_gpu_mem())*0.9)) {
     cublasCreate(&handle);
     cublasSetStream(handle,s);
 
-    if (const char* predfilename = std::getenv("PREDFILE")) 
-      load_predicates(std::string(predfilename));
+    //if (const char* predfilename = std::getenv("PREDFILE")) 
+    //  load_predicates(std::string(predfilename));
   }
 
   virtual ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
 
-  virtual GEMM_Options get_plan([[maybe_unused]] GEMM_Inputs inputs) {
-    return GEMM_Options(NOTRANS, NOPAD, NOTRANS, NOPAD, NOTRANS, NOPAD);
+  virtual GEMM_Options get_plan(GEMM_Inputs<double>) {
+    return GEMM_Options(BLAS_Op::NOTRANS, Pad_Op::NOPAD, 
+        BLAS_Op::NOTRANS, Pad_Op::NOPAD, 
+        BLAS_Op::NOTRANS, Pad_Op::NOPAD);
   }
 
   void sync() { s.synchronize(); }
 
-  void print_analytics() { planner.dump_analytics(); } 
-
-  void print_top_n(int n) {
-    planner.dump_top_n(n);
-  }
-
-  void print_bottom_n(int n) {
-    planner.dump_bottom_n(n);
-  }
-
-  void load_predicates(std::string filename) {
-    if (filename.size() == 0) return;
-    std::cout << "LOADING PREDFILE " << filename << std::endl;
-    std::ifstream is(filename);
-    if (!is.good()) {
-      std::cout << "File failed to open" << std::endl;
-      throw;
-    }
-    planner.load_predicates(is);
-  }
-
-  virtual void run_problems(Problem_Set &problems, int reps) {
+  void run_problems(Problem_Set &problems, int reps) {
   
     // TODO Use the existing workspace class rather than the Stack thing, 
     // it does the same thing but will be more elegant (if it works how 
@@ -124,33 +100,30 @@ public:
       size_t m = problem.m;
       size_t k = problem.k;
       size_t n = problem.n;
-      GEMM_Options plan(NOTRANS, NOPAD, NOTRANS, NOPAD, NOTRANS, NOPAD);
+      auto &planner = planners.gemm_planner<double>();
   
-      Matrix A, B, C;
-      A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix(m,k) : mem.allocate_matrix(k,m);
-      B = (problem.opB == CUBLAS_OP_N) ? mem.allocate_matrix(k,n) : mem.allocate_matrix(n,k);
-      C = mem.allocate_matrix(m,n);
+      Matrix<double> A, B, C;
+      A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix<double>(m,k) : mem.allocate_matrix<double>(k,m);
+      B = (problem.opB == CUBLAS_OP_N) ? mem.allocate_matrix<double>(k,n) : mem.allocate_matrix<double>(n,k);
+      C = mem.allocate_matrix<double>(m,n);
   
-      GEMM_Inputs inputs(handle, problem.opA, problem.opB, A, B, C,
-                         1.0, 0.0, Workspace());
+      GEMM_Inputs<double> inputs(handle, problem.opA, problem.opB, A, B, C, 1.0, 0.0);
   
       std::cout << "Run problem " << problem << std::endl;
   
       for (int i = 0; i < reps; i++) {
         auto plan = get_plan(inputs);
 
-        if (planner.calculate_workspace(plan,inputs)*sizeof(double) > mem.remaining_space()) {
+        size_t ws = planner.calculate_workspace(inputs,plan);
+        if (ws > mem.remaining_space()) {
           std::cout << "Insufficient memory for input " << problem << ", skipping" << std::endl;
           continue;
         }
         std::cout << "Running " << plan << std::endl;
 
-        size_t ws = planner.calculate_workspace(plan,inputs);
-        inputs.space = Workspace(mem.alloc(ws), ws);
+        Workspace space(mem.alloc<double>(ws), ws);
 
-        if (i == 0) {planner.warmup(plan,inputs,s); gpuAssert(cudaDeviceSynchronize());}
-        //planner.warmup(plan,inputs,s);
-        planner.execute(plan, inputs, s);
+        planner.execute(inputs, plan, space, s);
         mem.pop();
       }
       gpuAssert(cudaDeviceSynchronize());
@@ -158,42 +131,25 @@ public:
       mem.pop();
       mem.pop();
       mem.pop();
-
-      problem.flop_rate = planner.get_floprate(inputs);
-      problems.dump();
     }
   }
 };
 
 class SmartRunner : public Runner {
 public:
-  GEMM_Options get_plan(GEMM_Inputs inputs) override {
-    return planner.create_plan(inputs);
+  GEMM_Options get_plan(GEMM_Inputs<double> inputs) override {
+    return planners.gemm_planner<double>().create_plan(inputs);
   }
 };
 
 class RoundRobinRunner : public Runner {
   int i=-1;
 public:
-  GEMM_Options get_plan([[maybe_unused]] GEMM_Inputs inputs) override {
+  GEMM_Options get_plan(GEMM_Inputs<double>) override {
     const auto ops = GEMM_Options::enumerate();
     i = (i+1)%ops.size();
     return ops[i];
   }
 };
 
-class ExhaustiveRunner : public Runner {
-  GEMM_Options current_plan;
-public:
-  GEMM_Options get_plan([[maybe_unused]] GEMM_Inputs inputs) override {
-    return current_plan;
-  }
-
-  void run_problems(Problem_Set &problems, int reps) override {
-    for (auto &plan : GEMM_Options::enumerate()) {
-      current_plan = plan;
-      Runner::run_problems(problems, reps);
-    }
-  }
-};
 }

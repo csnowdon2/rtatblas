@@ -15,7 +15,7 @@ protected:
 public:
 
   template<typename T>
-  Workspace(T* ptr, size_t count) : count(count*sizeof(T)), ptr(ptr) {}
+  Workspace(T* ptr, size_t count) : count(count*sizeof(T)), ptr((char*)ptr) {}
 
   Workspace() : count(0), ptr(nullptr) {}
   virtual ~Workspace() = default;

@@ -3,6 +3,7 @@
 #include <map>
 #include <numeric>
 #include <algorithm>
+#include <json_encoding.h>
 
 template<typename Key, typename Opts>
 class Planner_Statistics {
@@ -44,5 +45,23 @@ public:
     }
 
     return floprates;
+  }
+
+  nlohmann::json json() {
+    nlohmann::json json;
+    for (auto &[key, opt_map] : times) {
+      nlohmann::json key_json = to_json(key);
+
+      key_json["options"] = nlohmann::json();
+      for (auto &[opt, ts] : opt_map) {
+        nlohmann::json opt_json;
+        opt_json["option"] = to_json(opt);
+        opt_json["times"] = ts;
+        key_json["options"].push_back(opt_json);
+      }
+
+      json.push_back(key_json);
+    }
+    return json;
   }
 };

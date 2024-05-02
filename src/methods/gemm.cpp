@@ -26,7 +26,7 @@ bool GEMM_Key::operator<(const GEMM_Key& rhs) const {
   return std::string(*this) < std::string(rhs);
 }
 
-std::ostream& operator<<(std::ostream& os, const GEMM_Key& dt) {
+std::ostream& rtat::operator<<(std::ostream& os, const GEMM_Key& dt) {
     os << std::string(dt);
     return os;
 }
@@ -64,7 +64,7 @@ bool GEMM_Options::operator<(const GEMM_Options& o) const {
   return std::string(*this) < std::string(o);
 }
 
-std::ostream& operator<<(std::ostream& os, const GEMM_Options opts) {
+std::ostream& rtat::operator<<(std::ostream& os, const GEMM_Options opts) {
   os << std::string(opts); 
   return os;
 }

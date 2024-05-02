@@ -56,6 +56,7 @@
 #define curandCreateGenerator hiprandCreateGenerator
 #define curandDestroyGenerator hiprandDestroyGenerator
 #define curandGenerateUniformDouble hiprandGenerateUniformDouble
+#define curandGenerateUniform hiprandGenerateUniform
 #define CURAND_RNG_PSEUDO_DEFAULT HIPRAND_RNG_PSEUDO_DEFAULT
 #endif
 #include <memory>
@@ -93,7 +94,19 @@ public:
 
   operator curandGenerator_t();
 
-  void uniform(double *A, size_t len);
+  template<typename T>
+  void uniform(T*, size_t);
+
+  template<>
+  void uniform(double *A, size_t len) {
+    curandGenerateUniformDouble(raw_rng->rng, A, len);
+  }
+
+  template<>
+  void uniform(float *A, size_t len) {
+    curandGenerateUniform(raw_rng->rng, A, len);
+  }
+
 private:
   std::shared_ptr<Raw_Device_RNG> raw_rng;
 };

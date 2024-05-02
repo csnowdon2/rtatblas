@@ -25,29 +25,29 @@ int main(int argc, char *argv[]) {
 
   {
     // Warmup
-    Matrix A = mem.allocate_matrix(10,10);
-    Matrix B = mem.allocate_matrix(10,10);
-    Matrix C = mem.allocate_matrix(10,10);
-    std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
-    std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
-    std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
+    Matrix A = mem.allocate_matrix<double>(10,10);
+    Matrix B = mem.allocate_matrix<double>(10,10);
+    Matrix C = mem.allocate_matrix<double>(10,10);
+    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
     MatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, 1.0, 0.0);
     mult.execute(handle, Workspace(), Workspace());
   }
 
   std::mt19937 rng;
 
-  Matrix A = mem.allocate_matrix(m,k);
-  Matrix B = mem.allocate_matrix(k,n);
-  Matrix C = mem.allocate_matrix(m,n);
+  Matrix A = mem.allocate_matrix<double>(m,k);
+  Matrix B = mem.allocate_matrix<double>(k,n);
+  Matrix C = mem.allocate_matrix<double>(m,n);
   //for (int mblock=64; mblock<=mblock_max; mblock += 128) {
   //  for (int nblock=64; nblock<=nblock_max; nblock += 128) {
 
       auto t1 = std::chrono::high_resolution_clock::now();
       for (int i = 0; i < reps; i++) {
-        std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
-        std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
-        std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
+        std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+        std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+        std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
 
         TiledMatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), 
                              false, false, 1.0, 0.0, mblock, kblock, nblock);
