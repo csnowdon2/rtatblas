@@ -39,9 +39,6 @@ public:
   }
 
   template<typename T>
-  T& operator[](size_t ix) {return ptr[ix];}
-
-  template<typename T>
   operator T*() {return (T*)ptr;}
 
   template<typename T>
