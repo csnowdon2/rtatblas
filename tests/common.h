@@ -98,6 +98,27 @@ public:
     return Matrix<T>(space, m, n, ld);
   }
 
+  friend T delta(const TestMatrix &A, const TestMatrix &B) {
+    if (A.m != B.m || A.n != B.n) throw "Bad delta";
+
+    T diff = 0.0;
+    for (size_t i = 0; i < A.m; i++) 
+      for (size_t j = 0; j < A.n; j++) 
+        diff = std::max(abs(A.host_vector[j*A.ld+i]-B.host_vector[j*B.ld+i]), diff);
+
+    return diff;
+  }
+
+  T norm() {
+    T norm = 0.0;
+    for (size_t i = 0; i < m; i++) 
+      for (size_t j = 0; j < n; j++) 
+        norm = std::max(abs(host_vector[j*ld+i]), norm);
+
+    return norm;
+
+  }
+
   friend bool operator==(const TestMatrix &A, const TestMatrix &B) {
     T epsilon = 0;
     if constexpr(std::is_same_v<T,float>) {
@@ -230,8 +251,6 @@ inline void test_trsm(TestMatrix<T> &A, TestMatrix<T> &B,
 
       for (int k=0; k<j; k++) {
         for (int i=0; i<m; i++) {
-          std::cout << "HELLO" << std::endl;
-          std::cout << ixB(j,i) << " -= " << ixB(k,i) << "*" << ixA(j,k) << std::endl;
           ixB(j,i) -= ixB(k,i)*ixA(j,k);
         }
       }

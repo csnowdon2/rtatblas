@@ -106,17 +106,67 @@ TEST_F(MatrixOp_Test, TestTrsmTest) {
       }
     }
   }
+}
 
-  //{
-  //  std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
-  //  std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+TEST_F(MatrixOp_Test, MatTrsmTest) {
+  // Numerical instability messes things up with 
+  // matrices that are any bigger than this
+  int m = 10;
+  int n = 12;
+  {
+    TestMatrix<double> A_raw(m,m,m);
+    for (auto side_left : {false,true}) {
+      for (auto lower : {false,true}) {
+        for (auto unit_diag : {false,true}) {
+          for (auto trans : {false,true}) {
+            int m_X = side_left ? m : n;
+            int n_X = side_left ? n : m;
+            TestMatrix<double> A(m,m,m);
+            TestMatrix<double> X(m_X,n_X,m_X);
+            TestMatrix<double> B(m_X,n_X,m_X);
+            A.host_vector = A_raw.host_vector;
+            X.host_vector = B.host_vector;
+            if (lower) {
+              for (int i=0; i<m; i++) {
+                for (int j=0; j<m; j++) {
+                  if (i > j) 
+                    A.host_vector[i*A.ld+j] = 0.0;
+                  if (unit_diag && i == j) 
+                    A.host_vector[i*A.ld+j] = 1.0;
+                }
+              }
+            } else {
+              for (int i=0; i<m; i++) {
+                for (int j=0; j<m; j++) {
+                  if (i < j) 
+                    A.host_vector[i*A.ld+j] = 0.0;
+                  if (unit_diag && i == j) 
+                    A.host_vector[i*A.ld+j] = 1.0;
+                }
+              }
+            }
+            A.upload();
+            B.upload();
 
-  //  MatrixTrs trs(std::move(Aop), std::move(Bop), side_left, lower, trans, unit_diag, 1.0);
-  //  ASSERT_EQ(trs.output_space_req(), 0);
-  //  trs.execute(handle, Workspace(), ManagedWorkspace(trs.scratch_space_req_bytes()));
+            std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+            std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
 
-  //  B.download();
-  //}
+            MatrixTrs trs(std::move(Aop), std::move(Bop), side_left, lower, trans, unit_diag, 1.0);
+            ASSERT_EQ(trs.output_space_req(), 0);
+            trs.execute(handle, Workspace(), ManagedWorkspace(trs.scratch_space_req_bytes()));
+
+            B.download();
+
+            test_trsm(A, X, side_left, lower, unit_diag, trans, 1.0);
+
+            bool good = (B == X);
+            EXPECT_TRUE(good);
+
+          }
+        }
+      }
+    }
+  }
 }
 
 TEST_F(MatrixOp_Test, TNMulTest) {

@@ -419,10 +419,10 @@ public:
              T alpha) : MatrixOp<T>({}, 1), side_left(side_left),
                         lower(lower), trans(trans), 
                         unit_diag(unit_diag), alpha(alpha) {
-    int nB = Bop->dims().n;
-    int mB = Bop->dims().m;
-    if ((side_left && mB != Aop->dims().m) || 
-        (!side_left && nB != Aop->dims().m) || 
+    size_t nB = Bop->dims().n;
+    size_t mB = Bop->dims().m;
+    if ((side_left && (mB != Aop->dims().m)) || 
+        (!side_left && (nB != Aop->dims().m)) || 
         (Aop->dims().m != Aop->dims().n)) {
       std::cout << "Bad matrix trs, mA=" << Aop->dims().m << " nA=" << Aop->dims().n << std::endl;
       std::cout << "                mB=" << Bop->dims().m << " nB=" << Bop->dims().n << std::endl;
