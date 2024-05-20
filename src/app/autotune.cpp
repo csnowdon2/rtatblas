@@ -4,30 +4,38 @@
 
 using namespace rtat;
 
+template<typename T> 
+void autotune(Problem &problem, int reps) {
+  SmartRunner<T> runner;
+  Problem_Set problems;
+
+  problems.add_problem(problem);
+  runner.run_problems(problems, reps);
+  runner.sync();
+  runner.json_output(std::cout);
+}
+
 int main(int argc, char *argv[]) {
-  if (argc != 7) { 
-    std::cout << "Expected command line args: m k n opA opB reps" << std::endl;
+  if (argc != 8) { 
+    std::cout << "Expected command line args: precision m k n opA opB reps" << std::endl;
     return 1;
   }
 
-  int m = atoi(argv[1]);
-  int k = atoi(argv[2]);
-  int n = atoi(argv[3]);
-  cublasOperation_t opA = argv[4][0] == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t opB = argv[5][0] == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
-  Problem p(m,k,n,opA,opB);
+  std::string precision(argv[1]);
+  int m = atoi(argv[2]);
+  int k = atoi(argv[3]);
+  int n = atoi(argv[4]);
+  cublasOperation_t opA = argv[5][0] == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t opB = argv[6][0] == 'N' ? CUBLAS_OP_N : CUBLAS_OP_T;
+  int reps = atoi(argv[7]);
 
-  int reps = atoi(argv[6]);
+  Problem problem(m,k,n,opA,opB);
 
-  //RoundRobinRunner runner;
-  SmartRunner runner;
-
-  Problem_Set problems;
-  problems.add_problem(p);
-  // TODO check for duplicate dimensions when using smart measurement
-  runner.run_problems(problems, reps);
-  runner.sync();
-  //runner.print_analytics();
-  runner.json_output(std::cout);
-  //runner.print_bottom_n(N);
+  if (precision == "double") {
+    autotune<double>(problem, reps);
+  } else if (precision == "single") {
+    autotune<float>(problem, reps);
+  } else {
+    throw("precision must be 'single' or 'double'");
+  }
 }

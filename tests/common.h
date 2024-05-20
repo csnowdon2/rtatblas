@@ -74,7 +74,7 @@ public:
 
   void randomize_host() {
     std::uniform_real_distribution<T> unif(-1.0, 1.0);
-    std::default_random_engine re;
+    static std::default_random_engine re;
 
     for (auto &x : host_vector) x = unif(re);
   }
@@ -99,11 +99,18 @@ public:
   }
 
   friend bool operator==(const TestMatrix &A, const TestMatrix &B) {
+    T epsilon = 0;
+    if constexpr(std::is_same_v<T,float>) {
+      epsilon = 1e-4;
+    } else if constexpr(std::is_same_v<T,double>) {
+      epsilon = 1e-10;
+    }
+
     if (A.m != B.m || A.n != B.n) return false;
 
     for (size_t i = 0; i < A.m; i++) 
       for (size_t j = 0; j < A.n; j++) 
-        if (abs(A.host_vector[j*A.ld+i]-B.host_vector[j*B.ld+i]) > 1e-10) return false;
+        if (abs(A.host_vector[j*A.ld+i]-B.host_vector[j*B.ld+i]) > epsilon) return false;
 
     return true;
   }
@@ -141,12 +148,109 @@ inline void test_gemm(TestMatrix<T> &A, TestMatrix<T> &B, TestMatrix<T> &C, T al
   auto ixB = [&](int i, int j) {return transb ? i*B.ld+j : j*B.ld+i;};
 
   size_t k = transa ? A.m : A.n;
+  // Error check
+  {
+    size_t k_B = transb ? B.n : B.m;
+    if (k != k_B) {
+      std::cout << "test_gemm k mismatch " << k << "=/=" << k_B << std::endl;
+      throw("test_gemm k mismatch");
+    }
+
+    size_t m = transa ? A.n : A.m;
+    if (m != C.m) {
+      std::cout << "test_gemm m mismatch " << m << "=/=" << C.m << std::endl;
+      throw("test_gemm m mismatch");
+    }
+
+    size_t n = transb ? B.m : B.n;
+    if (n != C.n) {
+      std::cout << "test_gemm n mismatch " << n << "=/=" << C.n << std::endl;
+      throw("test_gemm n mismatch");
+    }
+  }
+
   for (size_t i = 0; i < C.m; i++) {
     for (size_t j = 0; j < C.n; j++) {
       C.host_vector[j*C.ld+i] *= beta;
       for (size_t l = 0; l < k; l++) {
         C.host_vector[j*C.ld+i] += alpha*A.host_vector[ixA(i,l)]*B.host_vector[ixB(l,j)];
       }
+    }
+  }
+}
+
+template<typename T>
+inline void test_trsm(TestMatrix<T> &A, TestMatrix<T> &B, 
+                      bool side_left, bool lower, bool, 
+                      bool trans, T alpha) {
+  auto ixA = [&](size_t i, size_t j) -> T& {return trans ? A.host_vector[j*A.ld+i] : A.host_vector[i*A.ld+j];};
+  auto ixB = [&](size_t i, size_t j) -> T& {
+    //std::cout << i << " " << j << " ld=" << B.ld <<  std::endl;
+    //if (i >= B.n) throw("ABDOUA");
+    //if (j >= B.m) throw("ABDOUA");
+    return B.host_vector[i*B.ld+j];
+  };
+  if (trans) lower = !lower;
+
+  int n = B.n;
+  int m = B.m;
+  if (side_left && !lower) {
+    for (int j=0; j<n; j++) {
+      for (int i=0; i<m; i++) {
+        ixB(j,i) *= alpha;
+      }
+
+      for (int k=m-1; k>=0; k--) {
+        ixB(j,k) /= ixA(k,k);
+
+        for (int i=0; i<k; i++) {
+          ixB(j,i) -= ixB(j,k)*ixA(k,i);
+        }
+      }
+    }
+  } else if (side_left && lower) {
+    for (int j=0; j<n; j++) {
+      for (int i=0; i<m; i++) {
+        ixB(j,i) *= alpha;
+      }
+
+      for (int k=0; k<m; k++) {
+        ixB(j,k) /= ixA(k,k);
+
+        for (int i=k+1; i<m; i++) {
+          ixB(j,i) -= ixB(j,k)*ixA(k,i);
+        }
+      }
+    }
+  } else if (!side_left && !lower) {
+    for (int j=0; j<n; j++) {
+      for (int i=0; i<m; i++) {
+        ixB(j,i) *= alpha;
+      }
+
+      for (int k=0; k<j; k++) {
+        for (int i=0; i<m; i++) {
+          std::cout << "HELLO" << std::endl;
+          std::cout << ixB(j,i) << " -= " << ixB(k,i) << "*" << ixA(j,k) << std::endl;
+          ixB(j,i) -= ixB(k,i)*ixA(j,k);
+        }
+      }
+      for (int i=0; i<m; i++)
+        ixB(j,i) /= ixA(j,j);
+    }
+  } else if (!side_left && lower) {
+    for (int j=n-1; j>=0; j--) {
+      for (int i=0; i<m; i++) {
+        ixB(j,i) *= alpha;
+      }
+
+      for (int k=j+1; k<n; k++) {
+        for (int i=0; i<m; i++) {
+          ixB(j,i) -= ixB(k,i)*ixA(j,k);
+        }
+      }
+      for (int i=0; i<m; i++)
+        ixB(j,i) /= ixA(j,j);
     }
   }
 }

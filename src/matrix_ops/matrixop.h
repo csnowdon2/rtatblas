@@ -46,6 +46,39 @@ inline cublasStatus_t gpuTgemm(cublasHandle_t handle,
 }
 
 template<typename T>
+inline cublasStatus_t gpuTtrsm(cublasHandle_t handle, 
+                               bool side_left, bool lower, 
+                               bool trans, bool unit_diag,
+                               Matrix<T> A, Matrix<T> B, 
+                               const T alpha) {
+  int m = B.dims().m;
+  int n = B.dims().n;
+  if constexpr(std::is_same_v<T,double>) {
+    return cublasDtrsm(handle,
+                side_left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT,
+                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
+                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
+                unit_diag ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT,
+                m, n,
+                &alpha,
+                A.ptr(), A.dims().ld,
+                B.ptr(), B.dims().ld);
+  } else if constexpr(std::is_same_v<T,float>) {
+    return cublasStrsm(handle,
+                side_left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT,
+                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
+                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
+                unit_diag ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT,
+                m, n,
+                &alpha,
+                A.ptr(), A.dims().ld,
+                B.ptr(), B.dims().ld);
+  } else {
+    static_assert(!sizeof(T), "TRSM is only double and float");
+  }
+}
+
+template<typename T>
 inline cublasStatus_t gpuTgeam(cublasHandle_t handle, 
                                bool transa, bool transb,
                                Matrix<T> A, Matrix<T> B, Matrix<T> C,
@@ -371,6 +404,52 @@ public:
     T beta = 0.0;
     gpuTgemm<T>(handle, transa, transb, A, B, C, alpha, beta);
     return C;
+  }
+
+};
+
+template<typename T>
+class MatrixTrs : public MatrixOp<T> {
+protected:
+  bool side_left, lower, trans, unit_diag;
+  T alpha;
+public:
+  MatrixTrs(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
+      bool side_left, bool lower, bool trans, bool unit_diag,
+             T alpha) : MatrixOp<T>({}, 1), side_left(side_left),
+                        lower(lower), trans(trans), 
+                        unit_diag(unit_diag), alpha(alpha) {
+    int nB = Bop->dims().n;
+    int mB = Bop->dims().m;
+    if ((side_left && mB != Aop->dims().m) || 
+        (!side_left && nB != Aop->dims().m) || 
+        (Aop->dims().m != Aop->dims().n)) {
+      std::cout << "Bad matrix trs, mA=" << Aop->dims().m << " nA=" << Aop->dims().n << std::endl;
+      std::cout << "                mB=" << Bop->dims().m << " nB=" << Bop->dims().n << std::endl;
+      std::cout << "                " << (side_left ? "LEFT" : "RIGHT") << std::endl;
+      throw;
+    }
+    
+    this->operands.push_back(std::move(Aop));
+    this->operands.push_back(std::move(Bop));
+  }
+
+  MatrixDims dims() const override {
+    auto &Bop = this->operands[1];
+    return Bop->dims();
+  }
+
+  size_t output_space_req() const override {return 0;}
+
+  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
+
+    Matrix<T> &A = matrices[0];
+    Matrix<T> &B = matrices[1];
+
+    gpuTtrsm<T>(handle, side_left, lower, trans, unit_diag, A, B, alpha);
+    return B;
   }
 
 };

@@ -60,20 +60,21 @@ inline size_t avail_gpu_mem() {
   return free;
 }
 
+template<typename T>
 class Runner {
 protected:
   GPU_Stack_Buffer mem;
   cublasHandle_t handle;
   Stream s;
-  rtat planners;
+  Planning_System<GEMM_Executor<T>> planner;
 
 public:
-  rtat& get_rtat() { return planners; }
-  void json_output(std::ostream &os) { os << std::setw(2) << planners.gemm_planner<double>().make_statistics().json(); }
+  Planning_System<GEMM_Executor<T>>& get_planner() { return planner; }
+  void json_output(std::ostream &os) { os << std::setw(2) << planner.make_statistics().json(); }
   void json_output(std::string filename) { std::ofstream file(filename); json_output(file); }
   
 
-  Runner() : mem((size_t)(((double)avail_gpu_mem())*0.9)) {
+  Runner() : mem((size_t)(((T)avail_gpu_mem())*0.9)) {
     cublasCreate(&handle);
     cublasSetStream(handle,s);
 
@@ -83,7 +84,7 @@ public:
 
   virtual ~Runner() { gpuAssert(cudaDeviceSynchronize()); cublasDestroy(handle); }
 
-  virtual GEMM_Options get_plan(GEMM_Inputs<double>) {
+  virtual GEMM_Options get_plan(GEMM_Inputs<T>) {
     return GEMM_Options(BLAS_Op::NOTRANS, Pad_Op::NOPAD, 
         BLAS_Op::NOTRANS, Pad_Op::NOPAD, 
         BLAS_Op::NOTRANS, Pad_Op::NOPAD);
@@ -100,14 +101,13 @@ public:
       size_t m = problem.m;
       size_t k = problem.k;
       size_t n = problem.n;
-      auto &planner = planners.gemm_planner<double>();
   
-      Matrix<double> A, B, C;
-      A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix<double>(m,k) : mem.allocate_matrix<double>(k,m);
-      B = (problem.opB == CUBLAS_OP_N) ? mem.allocate_matrix<double>(k,n) : mem.allocate_matrix<double>(n,k);
-      C = mem.allocate_matrix<double>(m,n);
+      Matrix<T> A, B, C;
+      A = (problem.opA == CUBLAS_OP_N) ? mem.allocate_matrix<T>(m,k) : mem.allocate_matrix<T>(k,m);
+      B = (problem.opB == CUBLAS_OP_N) ? mem.allocate_matrix<T>(k,n) : mem.allocate_matrix<T>(n,k);
+      C = mem.allocate_matrix<T>(m,n);
   
-      GEMM_Inputs<double> inputs(handle, problem.opA, problem.opB, A, B, C, 1.0, 0.0);
+      GEMM_Inputs<T> inputs(handle, problem.opA, problem.opB, A, B, C, 1.0, 0.0);
   
       std::cout << "Run problem " << problem << std::endl;
   
@@ -121,7 +121,7 @@ public:
         }
         std::cout << "Running " << plan << std::endl;
 
-        Workspace space(mem.alloc<double>(ws), ws);
+        Workspace space(mem.alloc<T>(ws), ws);
 
         planner.execute(inputs, plan, space, s);
         mem.pop();
@@ -135,17 +135,19 @@ public:
   }
 };
 
-class SmartRunner : public Runner {
+template <typename T>
+class SmartRunner : public Runner<T> {
 public:
-  GEMM_Options get_plan(GEMM_Inputs<double> inputs) override {
-    return planners.gemm_planner<double>().create_plan(inputs);
+  GEMM_Options get_plan(GEMM_Inputs<T> inputs) override {
+    return this->planner.create_plan(inputs);
   }
 };
 
-class RoundRobinRunner : public Runner {
+template <typename T>
+class RoundRobinRunner : public Runner<T> {
   int i=-1;
 public:
-  GEMM_Options get_plan(GEMM_Inputs<double>) override {
+  GEMM_Options get_plan(GEMM_Inputs<T>) override {
     const auto ops = GEMM_Options::enumerate();
     i = (i+1)%ops.size();
     return ops[i];

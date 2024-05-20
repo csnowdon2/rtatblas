@@ -5,27 +5,23 @@
 #include <sstream>
 #include <fstream>
 #include <vector>
-#include <limits>
 
 namespace rtat {
 
 struct Problem {
   int m, k, n;
   cublasOperation_t opA, opB;
-  double flop_rate;
 
   Problem() {}
 
   Problem(int m, int k, int n, 
           cublasOperation_t opA, 
           cublasOperation_t opB) :
-      m(m), k(k), n(n), opA(opA), opB(opB), 
-      flop_rate(0.0) {}
+      m(m), k(k), n(n), opA(opA), opB(opB) {}
 
   friend std::ostream& operator<<(std::ostream& os, const Problem &problem) {
     os << problem.m << " " << problem.k << " " << problem.n << " "
-       << op_to_char(problem.opA) << " " << op_to_char(problem.opB)
-       << " " << problem.flop_rate;
+       << op_to_char(problem.opA) << " " << op_to_char(problem.opB);
     return os;
   }
 
@@ -38,7 +34,6 @@ struct Problem {
     is >> B;
     problem.opA = char_to_op(A);
     problem.opB = char_to_op(B);
-    is >> problem.flop_rate;
 
     return is;
   }
@@ -48,7 +43,7 @@ struct Problem {
               << ", k=" << k 
               << ", n=" << n 
               << ", " << op_to_char(opA) << op_to_char(opB) 
-              << ", floprate=" << flop_rate << std::endl;
+              << std::endl;
   }
 
 private:

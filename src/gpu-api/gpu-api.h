@@ -38,9 +38,11 @@
 #define cublasDestroy hipblasDestroy
 #define cublasDgeam hipblasDgeam
 #define cublasDgemm hipblasDgemm
+#define cublasDtrsm hipblasDtrsm
 #define cublasDgemmBatched hipblasDgemmBatched
 #define cublasSgeam hipblasSgeam
 #define cublasSgemm hipblasSgemm
+#define cublasStrsm hipblasStrsm
 #define cublasSgemmBatched hipblasSgemmBatched
 #define cublasGetStream hipblasGetStream
 #define cublasSetStream hipblasSetStream
@@ -58,6 +60,12 @@
 #define curandGenerateUniformDouble hiprandGenerateUniformDouble
 #define curandGenerateUniform hiprandGenerateUniform
 #define CURAND_RNG_PSEUDO_DEFAULT HIPRAND_RNG_PSEUDO_DEFAULT
+#define CUBLAS_SIDE_LEFT HIPBLAS_SIDE_LEFT
+#define CUBLAS_SIDE_RIGHT HIPBLAS_SIDE_RIGHT
+#define CUBLAS_DIAG_NON_UNIT HIPBLAS_DIAG_NON_UNIT
+#define CUBLAS_DIAG_UNIT HIPBLAS_DIAG_UNIT
+#define CUBLAS_FILL_MODE_LOWER HIPBLAS_FILL_MODE_LOWER
+#define CUBLAS_FILL_MODE_UPPER HIPBLAS_FILL_MODE_UPPER
 #endif
 #include <memory>
 #include <iostream>
@@ -173,14 +181,4 @@ public:
 private:
   std::shared_ptr<Raw_Event> raw_event;
 };
-
-//cublasDgemm(handle,
-//            opA, opB,
-//            msize, nsize, ksize,
-//            &this->alpha,
-//            &A.ptr()[c*A.dims().ld + a], A.dims().ld,
-//            &B.ptr()[b*B.dims().ld + c], B.dims().ld,
-//            &bet,
-//            &C.ptr()[b*C.dims().ld + a], C.dims().ld);
-
 }

@@ -55,6 +55,70 @@ TEST_F(MatrixOp_Test, MatMulTest) {
   ASSERT_TRUE(C.is_zero());
 }
 
+TEST_F(MatrixOp_Test, TestTrsmTest) {
+  int m = 5;
+  int n = 6;
+
+  TestMatrix<double> A_raw(m,m,m);
+
+  for (auto side_left : {false,true}) {
+    for (auto lower : {false,true}) {
+      for (auto unit_diag : {false,true}) {
+        for (auto trans : {false,true}) {
+          TestMatrix<double> A(m,m,m);
+          int m_X = side_left ? m : n;
+          int n_X = side_left ? n : m;
+          TestMatrix<double> X(m_X,n_X,m_X);
+          TestMatrix<double> B(m_X,n_X,m_X);
+          TestMatrix<double> B_test(m_X,n_X,m_X);
+          if (lower) {
+            for (int i=0; i<m; i++) {
+              for (int j=0; j<m; j++) {
+                if (i > j) 
+                  A.host_vector[i*A.ld+j] = 0.0;
+              }
+            }
+          } else {
+            for (int i=0; i<m; i++) {
+              for (int j=0; j<m; j++) {
+                if (i < j) 
+                  A.host_vector[i*A.ld+j] = 0.0;
+              }
+            }
+          }
+          X.host_vector = B.host_vector;
+          test_trsm(A, X, side_left, lower, unit_diag, trans, 1.0);
+
+          std::cout << "X=" << std::endl;
+          X.print();
+
+          if (side_left) {
+            test_gemm(A, X, B_test, 1.0, 0.0, trans, false);
+          } else {
+            test_gemm(X, A, B_test, 1.0, 0.0, false, trans);
+          }
+          bool test = B_test == B;
+          if (!test) {
+            std::cout << "side_left=" << side_left << " lower=" << lower << " unit=" << unit_diag << " trans=" << trans << std::endl;
+          }
+          EXPECT_TRUE(test);
+        }
+      }
+    }
+  }
+
+  //{
+  //  std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+  //  std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+
+  //  MatrixTrs trs(std::move(Aop), std::move(Bop), side_left, lower, trans, unit_diag, 1.0);
+  //  ASSERT_EQ(trs.output_space_req(), 0);
+  //  trs.execute(handle, Workspace(), ManagedWorkspace(trs.scratch_space_req_bytes()));
+
+  //  B.download();
+  //}
+}
+
 TEST_F(MatrixOp_Test, TNMulTest) {
   int m = 25;
   int k = 14;
