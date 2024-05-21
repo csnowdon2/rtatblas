@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include <vector>
 
@@ -88,6 +89,37 @@ public:
 
   std::vector<Pad_Op> enumerate() {
     return {Pad_Op(NOPAD), Pad_Op(PAD)};
+  }
+};
+
+class Bool_Op {
+public:
+  bool op;
+
+  Bool_Op() : op(false) {}
+
+  operator bool() {return op;}
+
+  Bool_Op operator!() {return Bool_Op(!op);}
+
+  operator std::string() const {
+    if (op) return "T";
+    return "F";
+  }
+
+  Bool_Op(bool op) : op(op) {}
+
+  Bool_Op(std::string c) {
+    if (c.size() > 1) throw;
+    switch (c[0]) {
+      case 'T': op = true;
+      case 'F': op = false;
+      default: throw;
+    }
+  }
+
+  std::vector<Bool_Op> enumerate() {
+    return {Bool_Op(false), Bool_Op(true)};
   }
 };
 }

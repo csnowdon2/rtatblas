@@ -261,7 +261,7 @@ public:
   Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
     if (out_space.size<T>() < output_space_req() || 
         scratch_space.size<T>() < this->scratch_space_req()) {
-      std::cout << "NOT ENOUGH SPACE" << std::endl;
+      std::cout << "ACCUMULATE NOT ENOUGH SPACE" << std::endl;
       throw "Not enough space";
     }
 
@@ -299,7 +299,7 @@ public:
   Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
     if (out_space.size<T>() < output_space_req() || 
         scratch_space.size<T>() < this->scratch_space_req()) {
-      std::cout << "NOT ENOUGH SPACE" << std::endl;
+      std::cout << "MATRIX MOVE NOT ENOUGH SPACE" << std::endl;
       throw "Not enough space";
     }
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
@@ -320,6 +320,7 @@ protected:
   bool transa, transb;
   T alpha, beta;
 public:
+  virtual ~MatrixMult() = default;
   MatrixMult(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
              std::unique_ptr<MatrixOp<T>> Cop, bool transa, bool transb, 
              T alpha, T beta) : MatrixOp<T>({}, 2), transa(transa), transb(transb),
@@ -440,6 +441,54 @@ public:
   }
 
   size_t output_space_req() const override {return 0;}
+
+  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
+
+    Matrix<T> &A = matrices[0];
+    Matrix<T> &B = matrices[1];
+
+    gpuTtrsm<T>(handle, side_left, lower, trans, unit_diag, A, B, alpha);
+    return B;
+  }
+
+};
+
+template<typename T>
+class MatrixTrsAlloc : public MatrixOp<T> {
+protected:
+  bool side_left, lower, trans, unit_diag;
+  T alpha;
+  size_t pad;
+public:
+  MatrixTrsAlloc(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Bop,
+      bool side_left, bool lower, bool trans, bool unit_diag,
+             T alpha, size_t pad = 1) : MatrixOp<T>({},1), side_left(side_left),
+                        lower(lower), trans(trans), 
+                        unit_diag(unit_diag), alpha(alpha), pad(pad) {
+    size_t nB = Bop->dims().n;
+    size_t mB = Bop->dims().m;
+    if ((side_left && (mB != Aop->dims().m)) || 
+        (!side_left && (nB != Aop->dims().m)) || 
+        (Aop->dims().m != Aop->dims().n)) {
+      std::cout << "Bad matrix trs, mA=" << Aop->dims().m << " nA=" << Aop->dims().n << std::endl;
+      std::cout << "                mB=" << Bop->dims().m << " nB=" << Bop->dims().n << std::endl;
+      std::cout << "                " << (side_left ? "LEFT" : "RIGHT") << std::endl;
+      throw;
+    }
+    
+    this->operands.push_back(std::move(Aop));
+    this->operands.push_back(std::move(Bop));
+  }
+
+  MatrixDims dims() const override {
+    auto &Bop = this->operands[1];
+    size_t ld = ((Bop->dims().m+pad-1)/pad)*pad;
+    return MatrixDims(Bop->dims().m, Bop->dims().n, ld);
+  }
+
+  size_t output_space_req() const override {return dims().footprint();}
 
   virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 

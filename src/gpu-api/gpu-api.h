@@ -60,10 +60,13 @@
 #define curandGenerateUniformDouble hiprandGenerateUniformDouble
 #define curandGenerateUniform hiprandGenerateUniform
 #define CURAND_RNG_PSEUDO_DEFAULT HIPRAND_RNG_PSEUDO_DEFAULT
+#define cublasSideMode_t hipblasSideMode_t
 #define CUBLAS_SIDE_LEFT HIPBLAS_SIDE_LEFT
 #define CUBLAS_SIDE_RIGHT HIPBLAS_SIDE_RIGHT
+#define cublasFillMode_t hipblasFillMode_t
 #define CUBLAS_DIAG_NON_UNIT HIPBLAS_DIAG_NON_UNIT
 #define CUBLAS_DIAG_UNIT HIPBLAS_DIAG_UNIT
+#define cublasDiagType_t hipblasDiagType_t
 #define CUBLAS_FILL_MODE_LOWER HIPBLAS_FILL_MODE_LOWER
 #define CUBLAS_FILL_MODE_UPPER HIPBLAS_FILL_MODE_UPPER
 #endif

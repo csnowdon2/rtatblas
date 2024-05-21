@@ -119,6 +119,17 @@ public:
 
   }
 
+  friend T diff(const TestMatrix &A, const TestMatrix &B) {
+    if (A.m != B.m || A.n != B.n) throw "Bad matrix diff";
+    T d = 0.0;
+
+    for (size_t i = 0; i < A.m; i++) 
+      for (size_t j = 0; j < A.n; j++) 
+        d = std::max(d,
+            abs(A.host_vector[j*A.ld+i]-B.host_vector[j*B.ld+i]));
+    return d;
+  }
+
   friend bool operator==(const TestMatrix &A, const TestMatrix &B) {
     T epsilon = 0;
     if constexpr(std::is_same_v<T,float>) {
