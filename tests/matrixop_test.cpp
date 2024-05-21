@@ -169,6 +169,64 @@ TEST_F(MatrixOp_Test, MatTrsmTest) {
   }
 }
 
+TEST_F(MatrixOp_Test, MatSyrkTest) {
+  // Numerical instability messes things up with 
+  // matrices that are any bigger than this
+  int k = 56;
+  int n = 72;
+  {
+    for (auto lower : {false,true}) {
+      for (auto trans : {false,true}) {
+        size_t mA = trans ? k : n;
+        size_t nA = trans ? n : k;
+        TestMatrix<double> A(mA,nA,mA);
+        TestMatrix<double> C(n,n,n);
+        for (int i=0; i<n; i++) {
+          for (int j=0; j<n; j++) {
+            if (i < j) 
+              C.host_vector[i*C.ld+j] = C.host_vector[j*C.ld+i];
+          }
+        }
+        
+        A.upload();
+
+        test_gemm(A, A, C, 1.0, 0.0, trans, !trans);
+        C.upload();
+
+        std::unique_ptr<MatrixOp<double>> Aop = 
+          std::make_unique<NoOp<double>>(A);
+        std::unique_ptr<MatrixOp<double>> Cop = 
+          std::make_unique<NoOp<double>>(C);
+
+        MatrixSyrk<double> syrk(std::move(Aop), std::move(Cop), lower, trans, -1.0, 1.0);
+        ASSERT_EQ(syrk.output_space_req(), 0);
+        syrk.execute(handle, Workspace(), 
+            ManagedWorkspace(syrk.scratch_space_req_bytes()));
+
+        C.download();
+        // gpu syrk only acts on half the matrix, 
+        // need to manually zero out the other half
+        if (lower) {
+          for (int i=0; i<n; i++) {
+            for (int j=0; j<n; j++) {
+              if (i > j) 
+                C.host_vector[i*C.ld+j] = 0.0;
+            }
+          }
+        } else {
+          for (int i=0; i<n; i++) {
+            for (int j=0; j<n; j++) {
+              if (i < j) 
+                C.host_vector[i*C.ld+j] = 0.0;
+            }
+          }
+        }
+        EXPECT_TRUE(C.is_zero());
+      }
+    }
+  }
+}
+
 TEST_F(MatrixOp_Test, TNMulTest) {
   int m = 25;
   int k = 14;

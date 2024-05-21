@@ -46,6 +46,36 @@ inline cublasStatus_t gpuTgemm(cublasHandle_t handle,
 }
 
 template<typename T>
+inline cublasStatus_t gpuTsyrk(cublasHandle_t handle, 
+                               bool lower, bool trans,
+                               Matrix<T> A, Matrix<T> C,
+                               const T alpha, const T beta) {
+  int n = C.dims().n;
+  int k = trans ? A.dims().m : A.dims().n;
+  if constexpr(std::is_same_v<T,double>) {
+    return cublasDsyrk(handle,
+                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
+                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
+                n, k, 
+                &alpha,
+                A.ptr(), A.dims().ld,
+                &beta,
+                C.ptr(), C.dims().ld);
+  } else if constexpr(std::is_same_v<T,float>) {
+    return cublasSsyrk(handle,
+                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
+                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
+                n, k, 
+                &alpha,
+                A.ptr(), A.dims().ld,
+                &beta,
+                C.ptr(), C.dims().ld);
+  } else {
+    static_assert(!sizeof(T), "SYRK is only double and float");
+  }
+}
+
+template<typename T>
 inline cublasStatus_t gpuTtrsm(cublasHandle_t handle, 
                                bool side_left, bool lower, 
                                bool trans, bool unit_diag,
@@ -503,6 +533,49 @@ public:
 
 };
 
+template<typename T>
+class MatrixSyrk : public MatrixOp<T> {
+protected:
+  bool lower, trans;
+  T alpha;
+  T beta;
+public:
+  MatrixSyrk(std::unique_ptr<MatrixOp<T>> Aop, std::unique_ptr<MatrixOp<T>> Cop,
+      bool lower, bool trans, T alpha, T beta) 
+    : MatrixOp<T>({}, 1), lower(lower), trans(trans), 
+      alpha(alpha), beta(beta) {
+    size_t n = Cop->dims().n;
+    size_t nA = trans ? Aop->dims().n : Aop->dims().m;
+    if ((n != nA) || 
+        (Cop->dims().m != Cop->dims().n)) {
+      std::cout << "Bad matrix trs, mA=" << Aop->dims().m << " nA=" << Aop->dims().n << std::endl;
+      std::cout << "                mC=" << Cop->dims().m << " nC=" << Cop->dims().n << std::endl;
+      throw;
+    }
+    
+    this->operands.push_back(std::move(Aop));
+    this->operands.push_back(std::move(Cop));
+  }
+
+  MatrixDims dims() const override {
+    auto &Cop = this->operands[1];
+    return Cop->dims();
+  }
+
+  size_t output_space_req() const override {return 0;}
+
+  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
+
+    Matrix<T> &A = matrices[0];
+    Matrix<T> &C = matrices[1];
+
+    gpuTsyrk<T>(handle, lower, trans, A, C, alpha, beta);
+    return C;
+  }
+
+};
 
 // template<typename T>
 // class BatchMatrixMult : public MatrixOp<T> {

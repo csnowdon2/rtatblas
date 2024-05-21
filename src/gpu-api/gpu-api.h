@@ -39,10 +39,12 @@
 #define cublasDgeam hipblasDgeam
 #define cublasDgemm hipblasDgemm
 #define cublasDtrsm hipblasDtrsm
+#define cublasDsyrk hipblasDsyrk
 #define cublasDgemmBatched hipblasDgemmBatched
 #define cublasSgeam hipblasSgeam
 #define cublasSgemm hipblasSgemm
 #define cublasStrsm hipblasStrsm
+#define cublasSsyrk hipblasSsyrk
 #define cublasSgemmBatched hipblasSgemmBatched
 #define cublasGetStream hipblasGetStream
 #define cublasSetStream hipblasSetStream
