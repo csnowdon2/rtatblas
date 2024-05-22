@@ -577,6 +577,45 @@ public:
 
 };
 
+template<typename T>
+class MatrixSyrkAlloc : public MatrixOp<T> {
+protected:
+  bool lower, trans;
+  T alpha;
+  size_t pad = 1;
+public:
+  MatrixSyrkAlloc(std::unique_ptr<MatrixOp<T>> Aop,
+      bool lower, bool trans, T alpha, size_t pad = 1) 
+    : MatrixOp<T>({}), lower(lower), trans(trans), 
+      alpha(alpha), pad(pad) {
+    
+    this->operands.push_back(std::move(Aop));
+  }
+
+  MatrixDims dims() const override {
+    auto &Aop = this->operands[0];
+    size_t n = trans ? Aop->dims().n : Aop->dims().m;
+    size_t ld = ((n+pad-1)/pad)*pad;
+    return MatrixDims(n,n,ld);
+  }
+
+  size_t output_space_req() const override {return dims().footprint();}
+
+  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+
+    auto matrices = this->compute_operands(handle, out_space, scratch_space);
+
+    Matrix<T> &A = matrices[0];
+    Matrix<T> C(out_space, dims());
+
+    // Zero out C?
+    gpuTgeam<T>(handle, false, false, C, C, C, 0.0, 0.0);
+    gpuTsyrk<T>(handle, lower, trans, A, C, alpha, 0.0);
+    return C;
+  }
+
+};
+
 // template<typename T>
 // class BatchMatrixMult : public MatrixOp<T> {
 //   bool transa, transb;

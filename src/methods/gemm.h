@@ -14,10 +14,10 @@ struct GEMM_Inputs {
   const Matrix<T> A;
   const Matrix<T> B;
         Matrix<T> C;
-  const double alpha; const double beta;
+  const T alpha; const T beta;
 
   GEMM_Inputs(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-              const Matrix<T> A, const Matrix<T> B, Matrix<T> C, double alpha, double beta)
+              const Matrix<T> A, const Matrix<T> B, Matrix<T> C, T alpha, T beta)
         : handle(handle), transa(transa), transb(transb), A(A), B(B), C(C), 
           alpha(alpha), beta(beta) {}
 

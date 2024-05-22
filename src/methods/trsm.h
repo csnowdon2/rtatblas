@@ -16,12 +16,12 @@ struct TRSM_Inputs {
   cublasDiagType_t diag;
   const Matrix<T> A;
         Matrix<T> B;
-  const double alpha; 
+  const T alpha; 
 
   TRSM_Inputs(cublasHandle_t handle, cublasSideMode_t side, 
               cublasFillMode_t uplo, cublasOperation_t trans, 
               cublasDiagType_t diag, 
-              const Matrix<T> A, Matrix<T> B, double alpha)
+              const Matrix<T> A, Matrix<T> B, T alpha)
         : handle(handle), side(side), uplo(uplo), trans(trans), 
           diag(diag), A(A), B(B), alpha(alpha){}
 

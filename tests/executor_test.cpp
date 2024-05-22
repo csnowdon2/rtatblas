@@ -1,11 +1,13 @@
 #include <gtest/gtest.h>
 #include <gemm.h>
 #include <trsm.h>
+#include <syrk.h>
 #include "common.h"
 #include "gpu-api.h"
 
 class GEMM_Executor_Test : public BLAS_Test {};
 class TRSM_Executor_Test : public BLAS_Test {};
+class SYRK_Executor_Test : public BLAS_Test {};
 
 TEST_F(GEMM_Executor_Test, Correctness_Double) {
   GEMM_Executor<double> exec;
@@ -220,6 +222,69 @@ TEST_F(TRSM_Executor_Test, TRSM_Correctness_Double) {
       }
     }
   }
+}
 
+TEST_F(SYRK_Executor_Test, SYRK_Correctness_Double) {
+  SYRK_Executor<double> syrk_exec;
+  GEMM_Executor<double> gemm_exec;
 
+  int n = 213;
+  int k = 74;
+
+  for (auto lower : {false,true}) {
+    for (auto trans : {false,true}) {
+      for (auto &opts : SYRK_Options::enumerate()) {
+        TestMatrix<double> C(n,n,n);
+        int m_A = trans ? k : n;
+        int n_A = trans ? n : k;
+        TestMatrix<double> A(m_A,n_A,m_A);
+        for (int i=0; i<n; i++) {
+          for (int j=0; j<n; j++) {
+            if (i > j) 
+              C.host_vector[i*C.ld+j] = C.host_vector[j*C.ld+i];
+            // Force diagonal dominance
+          }
+        }
+        A.upload();
+        C.upload();
+
+        // C := op(A)op(A)^T
+        {
+          GEMM_Inputs<double> inputs(handle, 
+              trans ? CUBLAS_OP_T : CUBLAS_OP_N, 
+              trans ? CUBLAS_OP_N : CUBLAS_OP_T, 
+              A, A, C, 1.0, 0.0);
+          gemm_exec.execute(
+              inputs, GEMM_Options(), Workspace(), s);
+        }
+
+        // C := C - op(A)op(A)^T
+        {
+          SYRK_Inputs<double> inputs(handle, 
+            lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
+            trans ? CUBLAS_OP_T : CUBLAS_OP_N, 
+            A, C, -1.0, 1.0);
+
+          size_t ws = 
+            syrk_exec.calculate_workspace(inputs, opts);
+          ManagedWorkspace space(ws);
+
+          syrk_exec.execute(inputs, opts, space, s);
+        }
+
+        C.download();
+        // Zero out un-used triangle
+        for (int i=0; i<n; i++) {
+          for (int j=0; j<n; j++) {
+            if (lower && i > j) 
+              C.host_vector[i*C.ld+j] = 0.0;
+            if (!lower && i < j) 
+              C.host_vector[i*C.ld+j] = 0.0;
+          }
+        }
+
+        EXPECT_TRUE(C.is_zero());
+      }
+    }
+  }
 }
