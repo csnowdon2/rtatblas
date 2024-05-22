@@ -74,6 +74,7 @@
 #endif
 #include <memory>
 #include <iostream>
+#include <map>
 
 namespace rtat {
 
@@ -185,5 +186,139 @@ public:
   static float elapsed_time(Event start, Event end);
 private:
   std::shared_ptr<Raw_Event> raw_event;
+};
+
+
+template<typename T, std::map<T, std::string> str_map>
+class String_Rep {
+  T val;
+public:
+  String_Rep(T val) : val(val) {}
+  operator T() {return val;}
+
+  String_Rep(std::string str) {
+    for (auto &[k,v] : str_map) {
+      if (v == str) {
+        val = k;
+        return;
+      }
+    }
+    throw std::runtime_error("Invalid string passed to string rep");
+  }
+
+  operator std::string() {
+    if (auto search = str_map.find(val); search != str_map.end()) {
+      return search->second;
+    }
+    throw std::runtime_error("Invalid string rep value");
+  }
+};
+
+class BLAS_Operation {
+  cublasOperation_t val;
+  static inline const std::map<cublasOperation_t, std::string> 
+    str_map = {{CUBLAS_OP_N, "N"}, 
+               {CUBLAS_OP_T, "T"}};
+public:
+  BLAS_Operation(cublasOperation_t val) : val(val) {}
+  operator cublasOperation_t() {return val;}
+
+  BLAS_Operation(std::string str) {
+    for (auto &[k,v] : str_map) {
+      if (v == str) {
+        val = k;
+        return;
+      }
+    }
+    throw std::runtime_error("Invalid string passed to string rep");
+  }
+
+  operator std::string() {
+    if (auto search = str_map.find(val); search != str_map.end()) {
+      return search->second;
+    }
+    throw std::runtime_error("Invalid string rep value");
+  }
+};
+
+class BLAS_Fill_Mode {
+  cublasFillMode_t val;
+  static inline const std::map<cublasFillMode_t, std::string> 
+    str_map = {{CUBLAS_FILL_MODE_LOWER, "Lower"}, 
+               {CUBLAS_FILL_MODE_UPPER, "Upper"}};
+public:
+  BLAS_Fill_Mode(cublasFillMode_t val) : val(val) {}
+  operator cublasFillMode_t() {return val;}
+
+  BLAS_Fill_Mode(std::string str) {
+    for (auto &[k,v] : str_map) {
+      if (v == str) {
+        val = k;
+        return;
+      }
+    }
+    throw std::runtime_error("Invalid string passed to string rep");
+  }
+
+  operator std::string() {
+    if (auto search = str_map.find(val); search != str_map.end()) {
+      return search->second;
+    }
+    throw std::runtime_error("Invalid string rep value");
+  }
+};
+
+class BLAS_Side {
+  cublasSideMode_t val;
+  static inline const std::map<cublasSideMode_t, std::string> 
+    str_map = {{CUBLAS_SIDE_LEFT,  "Left"},
+               {CUBLAS_SIDE_RIGHT, "Right"}};
+public:
+  BLAS_Side(cublasSideMode_t val) : val(val) {}
+  operator cublasSideMode_t() {return val;}
+
+  BLAS_Side(std::string str) {
+    for (auto &[k,v] : str_map) {
+      if (v == str) {
+        val = k;
+        return;
+      }
+    }
+    throw std::runtime_error("Invalid string passed to string rep");
+  }
+
+  operator std::string() {
+    if (auto search = str_map.find(val); search != str_map.end()) {
+      return search->second;
+    }
+    throw std::runtime_error("Invalid string rep value");
+  }
+};
+
+class BLAS_Diag {
+  cublasDiagType_t val;
+  static inline const std::map<cublasDiagType_t, std::string> 
+    str_map = {{CUBLAS_DIAG_UNIT,  "Unit"},
+               {CUBLAS_DIAG_NON_UNIT, "Non-Unit"}};
+public:
+  BLAS_Diag(cublasDiagType_t val) : val(val) {}
+  operator cublasDiagType_t() {return val;}
+
+  BLAS_Diag(std::string str) {
+    for (auto &[k,v] : str_map) {
+      if (v == str) {
+        val = k;
+        return;
+      }
+    }
+    throw std::runtime_error("Invalid string passed to string rep");
+  }
+
+  operator std::string() {
+    if (auto search = str_map.find(val); search != str_map.end()) {
+      return search->second;
+    }
+    throw std::runtime_error("Invalid string rep value");
+  }
 };
 }
