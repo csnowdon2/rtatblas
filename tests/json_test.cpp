@@ -126,3 +126,84 @@ TEST(JSON_Test, TRSM_Options) {
     }
   }
 }
+
+TEST(JSON_Test, GEMM_Key) {
+  const int m = 500;
+  const int n = 200;
+  const int k = 900;
+  for (auto &transA : {"N","T"}) {
+    for (auto &transB : {"N","T"}) {
+       nlohmann::json key_json;
+       key_json["transA"] = transA;
+       key_json["transB"] = transB;
+       key_json["m"] = m;
+       key_json["n"] = n;
+       key_json["k"] = k;
+
+       GEMM_Key key = from_json<GEMM_Key>(key_json);
+       nlohmann::json test_json = to_json(key);
+
+       ASSERT_EQ(test_json, key_json);
+    }
+  }
+  for (auto &transA : {"N","T"}) {
+    for (auto &transB : {"N","T"}) {
+      GEMM_Key key(
+          BLAS_Operation(transA), 
+          BLAS_Operation(transB), 
+          m, k, n);
+      nlohmann::json json = to_json(key);
+      GEMM_Key test_key = from_json<GEMM_Key>(json);
+
+      ASSERT_TRUE(!(test_key < key) && !(key < test_key));
+    }
+  }
+  
+}
+
+TEST(JSON_Test, GEMM_Options) {
+  for (auto &transA : {"N","T"}) {
+    for (auto &transB : {"N","T"}) {
+      for (auto &transC : {"N","T"}) {
+        for (auto &padA : {"N","P"}) {
+          for (auto &padB : {"N","P"}) {
+            for (auto &padC : {"N","P"}) {
+              nlohmann::json opts_json;
+              opts_json["transA"] = transA;
+              opts_json["transB"] = transB;
+              opts_json["transC"] = transC;
+              opts_json["padA"] = padA;
+              opts_json["padB"] = padB;
+              opts_json["padC"] = padC;
+
+              GEMM_Options opts = from_json<GEMM_Options>(opts_json);
+              nlohmann::json test_json = to_json(opts);
+
+              ASSERT_EQ(test_json, opts_json);
+            }
+          }
+        }
+      }
+    }
+  }
+  for (auto &transA : {"N","T"}) {
+    for (auto &transB : {"N","T"}) {
+      for (auto &transC : {"N","T"}) {
+        for (auto &padA : {"N","P"}) {
+          for (auto &padB : {"N","P"}) {
+            for (auto &padC : {"N","P"}) {
+              GEMM_Options opts(
+                  (BLAS_Op(transA)), Pad_Op(padA), 
+                  (BLAS_Op(transB)), Pad_Op(padB), 
+                  (BLAS_Op(transC)), Pad_Op(padC));
+              nlohmann::json json = to_json(opts);
+              GEMM_Options test_opts = from_json<GEMM_Options>(json);
+
+              ASSERT_TRUE(!(test_opts < opts) && !(opts < test_opts));
+            }
+          }
+        }
+      }
+    }
+  }
+}

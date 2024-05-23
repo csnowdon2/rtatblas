@@ -37,10 +37,12 @@ public:
 
   BLAS_Op(std::string c) {
     if (c.size() > 1) throw;
-    switch (c[0]) {
-      case 'N': op = NOTRANS;
-      case 'T': op = TRANS;
-      default: throw;
+    if (c == "N") {
+      op = NOTRANS;
+    } else if (c == "T") {
+      op = TRANS;
+    } else {
+      throw std::runtime_error("Invalid BLAS_Op string "+c);
     }
   }
 
@@ -80,11 +82,12 @@ public:
   Pad_Op(_Pad_Op op) : op(op) {}
 
   Pad_Op(std::string c) {
-    if (c.size() > 1) throw;
-    switch (c[0]) {
-      case 'N': op = NOPAD;
-      case 'P': op = PAD;
-      default: throw;
+    if (c == "N") {
+      op = NOPAD;
+    } else if (c == "P") {
+      op = PAD;
+    } else {
+      throw std::runtime_error("Invalid Pad_Op string "+c);
     }
   }
 
