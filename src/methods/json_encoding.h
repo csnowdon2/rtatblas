@@ -10,8 +10,8 @@ namespace rtat {
 
 template<typename A, typename B, typename C, typename D, typename E>
 constexpr bool verify_GEMM_Key_components() {
-  return std::is_same_v<A, cublasOperation_t>
-      && std::is_same_v<B, cublasOperation_t>
+  return std::is_same_v<A, BLAS_Operation>
+      && std::is_same_v<B, BLAS_Operation>
       && std::is_same_v<C, int>
       && std::is_same_v<D, int>
       && std::is_same_v<E, int>;
@@ -23,8 +23,8 @@ inline nlohmann::json to_json(GEMM_Key key) {
   static_assert(verify_GEMM_Key_components<decltype(opA),
       decltype(opB),decltype(m),decltype(n),decltype(k)>());
 
-  json["opA"] = (opA == CUBLAS_OP_N) ? "N" : "T";
-  json["opB"] = (opA == CUBLAS_OP_N) ? "N" : "T";
+  json["opA"] = std::string(opA);
+  json["opB"] = std::string(opB);
   json["m"] = m;
   json["n"] = n;
   json["k"] = k;

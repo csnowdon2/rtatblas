@@ -7,10 +7,7 @@ using namespace rtat;
 // TRSM_Key implementation
 TRSM_Key::operator std::string() const {
   std::stringstream ss;
-  ss << ((side == CUBLAS_SIDE_LEFT) ? "L" : "R")
-     << ((uplo == CUBLAS_FILL_MODE_UPPER) ? "U" : "L")
-     << ((trans == CUBLAS_OP_N) ? "N" : "T")
-     << ((diag == CUBLAS_DIAG_NON_UNIT) ? "N" : "U")
+  ss << side << uplo << trans << diag
      << " " << m << " " << n;
 
   std::string ret;
@@ -78,26 +75,18 @@ std::unique_ptr<MatrixOp<T>> TRSM_Options::form_operation(TRSM_Inputs<T> params)
   std::unique_ptr<MatrixOp<T>> B = std::make_unique<NoOp<T>>(params.B);
 
   if (transpose_A) {
-    params.trans = (params.trans == CUBLAS_OP_N)
-      ? CUBLAS_OP_T
-      : CUBLAS_OP_N;
-    params.uplo = (params.uplo == CUBLAS_FILL_MODE_UPPER) 
-      ? CUBLAS_FILL_MODE_LOWER
-      : CUBLAS_FILL_MODE_UPPER;
+    params.trans = !params.trans;
+    params.uplo = !params.uplo;
     A = std::make_unique<MatrixMove<T>>(
         std::move(A), 1.0, true, 1);
   }
 
   if (swap_side) {
     // Transpose B
-    params.trans = (params.trans == CUBLAS_OP_N)
-      ? CUBLAS_OP_T
-      : CUBLAS_OP_N;
-    params.side = (params.side == CUBLAS_SIDE_LEFT)
-      ? CUBLAS_SIDE_RIGHT
-      : CUBLAS_SIDE_LEFT;
-    std::unique_ptr<MatrixOp<T>> scratch = std::make_unique<MatrixMove<T>>(
-        std::move(B), 1.0, true, 1);
+    params.trans = !params.trans;
+    params.side = !params.side;
+    std::unique_ptr<MatrixOp<T>> scratch = 
+      std::make_unique<MatrixMove<T>>(std::move(B), 1.0, true, 1);
     scratch = std::make_unique<MatrixTrsAlloc<T>>(
         std::move(A), std::move(scratch), 
         params.side == CUBLAS_SIDE_LEFT,

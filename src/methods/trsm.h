@@ -10,17 +10,17 @@ namespace rtat {
 template<typename T>
 struct TRSM_Inputs {
   cublasHandle_t handle;
-  cublasSideMode_t side;
-  cublasFillMode_t uplo;
-  cublasOperation_t trans; 
-  cublasDiagType_t diag;
+  BLAS_Side side;
+  BLAS_Fill_Mode uplo;
+  BLAS_Operation trans; 
+  BLAS_Diag diag;
   const Matrix<T> A;
         Matrix<T> B;
   const T alpha; 
 
-  TRSM_Inputs(cublasHandle_t handle, cublasSideMode_t side, 
-              cublasFillMode_t uplo, cublasOperation_t trans, 
-              cublasDiagType_t diag, 
+  TRSM_Inputs(cublasHandle_t handle, BLAS_Side side, 
+              BLAS_Fill_Mode uplo, BLAS_Operation trans, 
+              BLAS_Diag diag, 
               const Matrix<T> A, Matrix<T> B, T alpha)
         : handle(handle), side(side), uplo(uplo), trans(trans), 
           diag(diag), A(A), B(B), alpha(alpha){}
@@ -31,14 +31,14 @@ struct TRSM_Inputs {
 
 
 struct TRSM_Key {
-  cublasSideMode_t side;
-  cublasFillMode_t uplo;
-  cublasOperation_t trans; 
-  cublasDiagType_t diag;
+  BLAS_Side side;
+  BLAS_Fill_Mode uplo;
+  BLAS_Operation trans; 
+  BLAS_Diag diag;
   int m; int n;
 
-  TRSM_Key(cublasSideMode_t side, cublasFillMode_t uplo, 
-           cublasOperation_t trans, cublasDiagType_t diag,
+  TRSM_Key(BLAS_Side side, BLAS_Fill_Mode uplo, 
+           BLAS_Operation trans, BLAS_Diag diag,
            int m, int n) : side(side), uplo(uplo),
                            trans(trans), diag(diag),
                            m(m), n(n) {}
@@ -89,8 +89,6 @@ protected:
     double *A, *B;
     gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
     gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
-
-    std::vector<cublasOperation_t> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
 
     for (auto side_left : {false,true}) {
       for (auto lower : {false,true}) {

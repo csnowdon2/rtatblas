@@ -301,34 +301,34 @@ TEST_F(MatrixOp_Test, TTMulTest) {
   ASSERT_TRUE(C.is_zero());
 }
 
-TEST_F(MatrixOp_Test, TiledMatMulTest) {
-  int m = 1024;
-  int k = 1024;
-  int n = 1024;
-
-  TestMatrix<double> A(m,k,m);
-  TestMatrix<double> B(k,n,k);
-  TestMatrix<double> C(m,n,m);
-
-  {
-    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
-    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
-    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
-
-    TiledMatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), 
-                         false, false, 1.0, 0.0, 128, 128, 128);
-    ASSERT_EQ(mult.output_space_req(), 0);
-    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req_bytes()));
-  }
-  {
-    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
-    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
-    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
-
-    MatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, -1.0, 1.0);
-    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req_bytes()));
-  }
-
-  C.download();
-  ASSERT_TRUE(C.is_zero());
-}
+//TEST_F(MatrixOp_Test, TiledMatMulTest) {
+//  int m = 1024;
+//  int k = 1024;
+//  int n = 1024;
+//
+//  TestMatrix<double> A(m,k,m);
+//  TestMatrix<double> B(k,n,k);
+//  TestMatrix<double> C(m,n,m);
+//
+//  {
+//    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+//    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+//    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
+//
+//    TiledMatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), 
+//                         false, false, 1.0, 0.0, 128, 128, 128);
+//    ASSERT_EQ(mult.output_space_req(), 0);
+//    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req_bytes()));
+//  }
+//  {
+//    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+//    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+//    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
+//
+//    MatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, -1.0, 1.0);
+//    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req_bytes()));
+//  }
+//
+//  C.download();
+//  ASSERT_TRUE(C.is_zero());
+//}

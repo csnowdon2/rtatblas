@@ -7,9 +7,7 @@ using namespace rtat;
 // SYRK_Key implementation
 SYRK_Key::operator std::string() const {
   std::stringstream ss;
-  ss << ((uplo == CUBLAS_FILL_MODE_UPPER) ? "U" : "L")
-     << ((trans == CUBLAS_OP_N) ? "N" : "T")
-     << " " << n << " " << k;
+  ss << uplo << trans << " " << n << " " << k;
 
   std::string ret;
   ss >> ret;

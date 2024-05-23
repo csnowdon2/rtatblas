@@ -10,15 +10,15 @@ namespace rtat {
 template<typename T>
 struct SYRK_Inputs {
   cublasHandle_t handle;
-  cublasFillMode_t uplo;
-  cublasOperation_t trans; 
+  BLAS_Fill_Mode uplo;
+  BLAS_Operation trans; 
   const Matrix<T> A;
         Matrix<T> C;
   const T alpha; 
   const T beta; 
 
-  SYRK_Inputs(cublasHandle_t handle, cublasFillMode_t uplo, 
-              cublasOperation_t trans, 
+  SYRK_Inputs(cublasHandle_t handle, BLAS_Fill_Mode uplo, 
+              BLAS_Operation trans, 
               const Matrix<T> A, Matrix<T> C, 
               T alpha, T beta)
         : handle(handle), uplo(uplo), trans(trans), 
@@ -30,11 +30,11 @@ struct SYRK_Inputs {
 
 
 struct SYRK_Key {
-  cublasFillMode_t uplo;
-  cublasOperation_t trans; 
+  BLAS_Fill_Mode uplo;
+  BLAS_Operation trans; 
   int n; int k;
 
-  SYRK_Key(cublasFillMode_t uplo, cublasOperation_t trans,
+  SYRK_Key(BLAS_Fill_Mode uplo, BLAS_Operation trans,
            int n, int k) : uplo(uplo), trans(trans), 
                            n(n), k(k) {}
 
@@ -84,8 +84,6 @@ protected:
     double *A, *C;
     gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
     gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
-
-    std::vector<cublasOperation_t> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
 
     for (auto lower : {false,true}) {
       for (auto trans : {false,true}) {

@@ -10,13 +10,13 @@ namespace rtat {
 template<typename T>
 struct GEMM_Inputs {
   cublasHandle_t handle;
-  cublasOperation_t transa; cublasOperation_t transb;
+  BLAS_Operation transa; BLAS_Operation transb;
   const Matrix<T> A;
   const Matrix<T> B;
         Matrix<T> C;
   const T alpha; const T beta;
 
-  GEMM_Inputs(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+  GEMM_Inputs(cublasHandle_t handle, BLAS_Operation transa, BLAS_Operation transb,
               const Matrix<T> A, const Matrix<T> B, Matrix<T> C, T alpha, T beta)
         : handle(handle), transa(transa), transb(transb), A(A), B(B), C(C), 
           alpha(alpha), beta(beta) {}
@@ -28,14 +28,14 @@ struct GEMM_Inputs {
 
 
 struct GEMM_Key {
-  cublasOperation_t transa; cublasOperation_t transb;
+  BLAS_Operation transa; BLAS_Operation transb;
   int m; int n; int k;
 
   template<typename T>
   GEMM_Key(GEMM_Inputs<T> i) : transa(i.transa), transb(i.transb), 
                             m(i.m()), n(i.n()), k(i.k()) {}
 
-  GEMM_Key(cublasOperation_t transa, cublasOperation_t transb,
+  GEMM_Key(BLAS_Operation transa, BLAS_Operation transb,
            int m, int k, int n) : transa(transa), transb(transb), 
                                   m(m), n(n), k(k) {}
 
@@ -90,7 +90,7 @@ protected:
     gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
     gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
 
-    std::vector<cublasOperation_t> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
+    std::vector<BLAS_Operation> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
 
     for (auto &opA : ops) {
       for (auto &opB : ops) {

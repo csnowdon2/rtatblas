@@ -2,19 +2,11 @@
 #include <sstream>
 using namespace rtat;
 
-cublasOperation_t switch_op(cublasOperation_t op) {
-  switch (op) {
-    case CUBLAS_OP_N: return CUBLAS_OP_T;
-    case CUBLAS_OP_T: return CUBLAS_OP_N;
-    default: throw "Bad BLAS OP";
-  }
-}
-
 // GEMM_Key implementation
 GEMM_Key::operator std::string() const {
   std::stringstream ss;
-  ss << ((transa == CUBLAS_OP_N) ? "N" : "T")
-     << ((transb == CUBLAS_OP_N) ? "N" : "T")
+  ss << transa
+     << transb
      << " " << m << " " << k << " " << n;
 
   std::string ret;
@@ -102,13 +94,13 @@ std::unique_ptr<MatrixOp<T>> GEMM_Options::form_operation(GEMM_Inputs<T> params)
   bool pc = padc == Pad_Op::PAD;
 
   if (ta) 
-    params.transa = switch_op(params.transa);
+    params.transa = !params.transa;
   if (ta || pa)
     A = std::make_unique<MatrixMove<T>>(
         std::move(A), 1.0, ta, pa ? 32 : 1);
 
   if (tb)
-    params.transb = switch_op(params.transb);
+    params.transb = !params.transb;
   if (tb || pb)
     B = std::make_unique<MatrixMove<T>>(
         std::move(B), 1.0, tb, pb ? 32 : 1);
