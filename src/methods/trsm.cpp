@@ -7,8 +7,8 @@ using namespace rtat;
 // TRSM_Key implementation
 TRSM_Key::operator std::string() const {
   std::stringstream ss;
-  ss << side << uplo << trans << diag
-     << " " << m << " " << n;
+  ss << side << "," << uplo << "," << trans << "," << diag
+     << "," << m << "," << n;
 
   std::string ret;
   ss >> ret;

@@ -204,7 +204,7 @@ public:
         return;
       }
     }
-    throw std::runtime_error("Invalid string passed to string rep");
+    throw std::runtime_error("Invalid string " + str + " passed to string rep");
   }
 
   operator std::string() const {
@@ -229,6 +229,12 @@ public:
   }
 
   bool operator==(T o) const {return val == o;}
+
+  friend std::ostream& operator<<(std::ostream& os, 
+      const String_Rep& r) {
+    os << std::string(r);
+    return os;
+  }
 };
 
 

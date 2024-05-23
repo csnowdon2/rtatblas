@@ -5,9 +5,9 @@ using namespace rtat;
 // GEMM_Key implementation
 GEMM_Key::operator std::string() const {
   std::stringstream ss;
-  ss << transa
-     << transb
-     << " " << m << " " << k << " " << n;
+  ss << transa << ","
+     << transb << ","
+     << "," << m << "," << k << "," << n;
 
   std::string ret;
   ss >> ret;

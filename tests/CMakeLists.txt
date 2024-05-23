@@ -34,6 +34,9 @@ target_link_libraries(executor_test methods GTest::gtest_main)
 
 add_executable(planning_test planning_test.cpp)
 target_link_libraries(planning_test rtatblas GTest::gtest_main)
+
+add_executable(json_test json_test.cpp)
+target_link_libraries(json_test rtatblas GTest::gtest_main)
 gtest_discover_tests(api_test)
 gtest_discover_tests(timing_test)
 gtest_discover_tests(plan_test)
@@ -41,4 +44,5 @@ gtest_discover_tests(workspace_test)
 gtest_discover_tests(matrix_ops_test)
 gtest_discover_tests(planning_test)
 gtest_discover_tests(executor_test)
+gtest_discover_tests(json_test)
 

@@ -7,7 +7,7 @@ using namespace rtat;
 // SYRK_Key implementation
 SYRK_Key::operator std::string() const {
   std::stringstream ss;
-  ss << uplo << trans << " " << n << " " << k;
+  ss << uplo << "," << trans << "," << n << "," << k;
 
   std::string ret;
   ss >> ret;

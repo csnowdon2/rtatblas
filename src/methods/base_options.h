@@ -1,4 +1,5 @@
 #pragma once
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -110,11 +111,13 @@ public:
   Bool_Op(bool op) : op(op) {}
 
   Bool_Op(std::string c) {
-    if (c.size() > 1) throw;
-    switch (c[0]) {
-      case 'T': op = true;
-      case 'F': op = false;
-      default: throw;
+    if (c == "T") {
+      op = true;
+    } else if (c == "F") {
+      op = false;
+    } else {
+      std::string err = "Invalid bool op string " + c;
+      throw std::runtime_error(err);
     }
   }
 
