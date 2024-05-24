@@ -37,11 +37,12 @@ public:
 
 template<typename Executor_Type> 
 class Planning_System {
-protected:
+public:
   using Params = typename Executor_Type::Params_T;
   using Key    = typename Executor_Type::Key_T;
   using Opts   = typename Executor_Type::Opts_T;
 
+protected:
   Executor_Type executor;
 
   const Option_Filter<Key, Opts> opt_filter;

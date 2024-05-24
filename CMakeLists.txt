@@ -32,7 +32,7 @@ if  (NOT nlohmann_json_FOUND)
   FetchContent_MakeAvailable(json)
 endif()
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -Wpedantic -Werror")
 
 add_subdirectory(src)
 enable_testing()

@@ -9,6 +9,8 @@ namespace rtat {
 
 template<typename T>
 struct GEMM_Inputs {
+  using Scalar = T;
+
   cublasHandle_t handle;
   BLAS_Operation transa; BLAS_Operation transb;
   const Matrix<T> A;

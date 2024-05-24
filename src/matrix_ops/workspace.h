@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdlib>
 #include <iostream>
+#include <gpu-api.h>
 // Captures user-provided workspace. Non-owning sized pointer.
 
 namespace rtat {
@@ -20,7 +21,7 @@ public:
   Workspace() : count(0), ptr(nullptr) {}
   virtual ~Workspace() = default;
 
-  Workspace(Workspace other, size_t offset, size_t count) 
+  Workspace(Workspace &other, size_t offset, size_t count) 
       : Workspace(&other.ptr[offset], count) {
     if (offset+count > other.count) {
       std::cout << "WORKSPACE OFFSET ERROR" << std::endl;
@@ -43,6 +44,25 @@ public:
 
   template<typename T>
   size_t size() {return count/sizeof(T);}
+};
+
+class ManagedWorkspace : public Workspace {
+public:
+  ManagedWorkspace(size_t bytes) : Workspace() {
+    gpuAssert(cudaMalloc(&ptr, bytes));
+    count = bytes;
+  }
+  ~ManagedWorkspace() { gpuAssert(cudaFree(ptr)); }
+
+  template<typename T>
+  void grow_to_fit(size_t new_count) {
+    if (size<T>() < new_count) {
+      gpuAssert(cudaDeviceSynchronize());
+      gpuAssert(cudaFree(ptr));
+      gpuAssert(cudaMalloc(&ptr, new_count*sizeof(T)));
+      count = new_count*sizeof(T);
+    }
+  }
 };
 
 }

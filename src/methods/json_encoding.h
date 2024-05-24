@@ -9,7 +9,7 @@
 namespace rtat {
 
 template<typename T>
-T from_json(nlohmann::json);
+T from_json(const nlohmann::json);
 
 template<typename A, typename B, typename C, typename D, typename E>
 constexpr bool verify_GEMM_Key_components() {
@@ -35,7 +35,7 @@ inline nlohmann::json to_json(GEMM_Key key) {
 }
 
 template<>
-inline GEMM_Key from_json(nlohmann::json json) {
+inline GEMM_Key from_json(const nlohmann::json json) {
   return GEMM_Key(
         BLAS_Operation(json["transA"].get<std::string>()),
         BLAS_Operation(json["transB"].get<std::string>()),
@@ -70,7 +70,7 @@ inline nlohmann::json to_json(GEMM_Options opts) {
 }
 
 template<>
-inline GEMM_Options from_json(nlohmann::json json) {
+inline GEMM_Options from_json(const nlohmann::json json) {
   return GEMM_Options(
       BLAS_Op(json["transA"].get<std::string>()),
       Pad_Op(json["padA"].get<std::string>()),
@@ -102,7 +102,7 @@ inline nlohmann::json to_json(SYRK_Key key) {
 }
 
 template<>
-inline SYRK_Key from_json(nlohmann::json json) {
+inline SYRK_Key from_json(const nlohmann::json json) {
   return SYRK_Key(
         BLAS_Fill_Mode(json["uplo"].get<std::string>()),
         BLAS_Operation(json["trans"].get<std::string>()),
@@ -127,7 +127,7 @@ inline nlohmann::json to_json(SYRK_Options opts) {
 }
 
 template<>
-inline SYRK_Options from_json(nlohmann::json json) {
+inline SYRK_Options from_json(const nlohmann::json json) {
   return SYRK_Options(
       Bool_Op(json["transA"].get<std::string>()),
       Bool_Op(json["transC"].get<std::string>()));
@@ -161,7 +161,7 @@ inline nlohmann::json to_json(TRSM_Key key) {
 }
 
 template<>
-inline TRSM_Key from_json(nlohmann::json json) {
+inline TRSM_Key from_json(const nlohmann::json json) {
   return TRSM_Key(
       BLAS_Side(json["side"].get<std::string>()),
       BLAS_Fill_Mode(json["uplo"].get<std::string>()),
@@ -188,7 +188,7 @@ inline nlohmann::json to_json(TRSM_Options opts) {
 }
 
 template<>
-inline TRSM_Options from_json(nlohmann::json json) {
+inline TRSM_Options from_json(const nlohmann::json json) {
   return TRSM_Options(
       Bool_Op(json["swap_side"].get<std::string>()),
       Bool_Op(json["transA"].get<std::string>()));

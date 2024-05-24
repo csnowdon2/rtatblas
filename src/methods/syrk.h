@@ -9,6 +9,8 @@ namespace rtat {
 
 template<typename T>
 struct SYRK_Inputs {
+  using Scalar = T;
+
   cublasHandle_t handle;
   BLAS_Fill_Mode uplo;
   BLAS_Operation trans; 
@@ -25,7 +27,7 @@ struct SYRK_Inputs {
           A(A), C(C), alpha(alpha), beta(beta) {}
 
   size_t n() {return C.dims().m;}
-  size_t k() {return trans ? A.dims().m : A.dims().n;}
+  size_t k() {return trans == CUBLAS_OP_N ? A.dims().n : A.dims().m;}
 };
 
 
@@ -80,7 +82,7 @@ class SYRK_Executor : public Executor<SYRK_Inputs<T>, SYRK_Key, SYRK_Options> {
 protected:
   void warmup(SYRK_Inputs<T> params, [[maybe_unused]] SYRK_Options opts,
               [[maybe_unused]] Stream s) override {
-    size_t n = 8;
+    size_t n = 64;
     double *A, *C;
     gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
     gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
@@ -89,7 +91,7 @@ protected:
       for (auto trans : {false,true}) {
         double alpha = 1.0;
         double beta = 0.0;
-        cublasDsyrk(params.handle,
+        auto status = cublasDsyrk(params.handle,
           lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
           trans ? CUBLAS_OP_T : CUBLAS_OP_N,
           n, n, 
@@ -97,8 +99,14 @@ protected:
           A, n,
           &beta,
           C, n);
-        cublasDgeam(params.handle, CUBLAS_OP_N, CUBLAS_OP_T, 
+        if (status != CUBLAS_SUCCESS) {
+          std::cout << "Fuc" << std::endl;
+        }
+        status = cublasDgeam(params.handle, CUBLAS_OP_N, CUBLAS_OP_T, 
             n,n, &alpha, A, n, &beta, C, n, A, n);
+        if (status != CUBLAS_SUCCESS) {
+          std::cout << "Fuc" << std::endl;
+        }
       }
     }
     gpuAssert(cudaDeviceSynchronize());

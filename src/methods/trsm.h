@@ -9,6 +9,8 @@ namespace rtat {
 
 template<typename T>
 struct TRSM_Inputs {
+  using Scalar = T;
+
   cublasHandle_t handle;
   BLAS_Side side;
   BLAS_Fill_Mode uplo;
@@ -85,7 +87,7 @@ class TRSM_Executor : public Executor<TRSM_Inputs<T>, TRSM_Key, TRSM_Options> {
 protected:
   void warmup(TRSM_Inputs<T> params, [[maybe_unused]] TRSM_Options opts,
               [[maybe_unused]] Stream s) override {
-    size_t n = 8;
+    size_t n = 128;
     double *A, *B;
     gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
     gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
