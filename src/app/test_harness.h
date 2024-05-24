@@ -208,7 +208,19 @@ public:
   }
 
   nlohmann::json run_autotune([[maybe_unused]] int repetitions) {
-    throw std::runtime_error("Autotune run type not implemented");
+    Planner_Type planner;
+    for (auto &problem : problems.get_problems()) {
+      for (int i=0; i<repetitions; i++) {
+        Params input = form_input<Scalar>(problem);
+        auto opts = planner.create_plan(problem);
+        resources.scratch_space.grow_to_fit<char>(
+            planner.calculate_workspace(input,opts));
+        planner.execute(
+            input, opts, resources.scratch_space, resources.s);
+        resources.sync();
+      }
+    }
+    return planner.make_statistics().json();
   }
 
   template<typename T>
