@@ -193,9 +193,9 @@ public:
   nlohmann::json run_exhaustive(int repetitions) {
     Planner_Type planner;
     for (auto &problem : problems.get_problems()) {
-      Params input = form_input<Scalar>(problem);
       for (auto &opts : Opts::enumerate()) {
         for (int i=0; i<repetitions; i++) {
+          Params input = form_input<Scalar>(problem);
           resources.scratch_space.grow_to_fit<char>(
               planner.calculate_workspace(input,opts));
           planner.execute(
