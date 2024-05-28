@@ -161,7 +161,7 @@ TEST(JSON_Test, GEMM_Key) {
   
 }
 
-TEST(JSON_Test, GEMM_Options) {
+TEST(JSON_Test, GEMM_Options_Pad) {
   for (auto &transA : {"N","T"}) {
     for (auto &transB : {"N","T"}) {
       for (auto &transC : {"N","T"}) {
@@ -176,7 +176,7 @@ TEST(JSON_Test, GEMM_Options) {
               opts_json["padB"] = padB;
               opts_json["padC"] = padC;
 
-              GEMM_Options opts = from_json<GEMM_Options>(opts_json);
+              GEMM_Options_Pad opts = from_json<GEMM_Options_Pad>(opts_json);
               nlohmann::json test_json = to_json(opts);
 
               ASSERT_EQ(test_json, opts_json);
@@ -192,12 +192,12 @@ TEST(JSON_Test, GEMM_Options) {
         for (auto &padA : {"N","P"}) {
           for (auto &padB : {"N","P"}) {
             for (auto &padC : {"N","P"}) {
-              GEMM_Options opts(
+              GEMM_Options_Pad opts(
                   (BLAS_Op(transA)), Pad_Op(padA), 
                   (BLAS_Op(transB)), Pad_Op(padB), 
                   (BLAS_Op(transC)), Pad_Op(padC));
               nlohmann::json json = to_json(opts);
-              GEMM_Options test_opts = from_json<GEMM_Options>(json);
+              GEMM_Options_Pad test_opts = from_json<GEMM_Options_Pad>(json);
 
               ASSERT_TRUE(!(test_opts < opts) && !(opts < test_opts));
             }

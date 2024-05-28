@@ -9,12 +9,3 @@ target_link_libraries(run_tests PUBLIC app_common)
 
 add_executable(generate_input generate_input.cpp)
 target_link_libraries(generate_input PUBLIC app_common)
-
-add_executable(autotune autotune.cpp)
-target_link_libraries(autotune PUBLIC app_common)
-
-add_executable(exhaustive exhaustive.cpp)
-target_link_libraries(exhaustive PUBLIC app_common)
-
-add_executable(batch_gemm batch_gemm.cpp)
-target_link_libraries(batch_gemm PUBLIC app_common)

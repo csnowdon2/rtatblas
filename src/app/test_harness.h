@@ -43,6 +43,7 @@ class Method {
 public:
   enum _Method {
     GEMM,
+    GEMM_PAD,
     TRSM,
     SYRK
   };
@@ -51,11 +52,13 @@ public:
   Method(std::string m) {
     if (m == "gemm") {
       val = GEMM;
+    } else if (m == "gemm_pad") {
+      val = GEMM_PAD;
     } else if (m == "syrk") {
       val = SYRK;
     } else if (m == "trsm") {
       val = TRSM;
-    }else {
+    } else {
       throw std::runtime_error("Invalid method: "+m);
     }
   }
@@ -64,6 +67,8 @@ public:
     switch (val) {
       case GEMM:
         return "gemm";
+      case GEMM_PAD:
+        return "gemm_pad";
       case SYRK:
         return "syrk";
       case TRSM:
@@ -124,10 +129,10 @@ struct Input_File {
 
   Input_File(const nlohmann::json& input_json) 
     : problem_json(input_json["problems"]),
-      run_type(input_json["run_type"].get<std::string>()),
-      method(input_json["method"].get<std::string>()),
-      data_type(input_json["data_type"].get<std::string>()),
-      repetitions(input_json["repetitions"].get<int>()) {}
+      run_type(input_json["keywords"]["run_type"].get<std::string>()),
+      method(input_json["keywords"]["method"].get<std::string>()),
+      data_type(input_json["keywords"]["data_type"].get<std::string>()),
+      repetitions(input_json["keywords"]["repetitions"].get<int>()) {}
 };
 
 struct Device_Resources {

@@ -50,7 +50,8 @@ public:
   nlohmann::json json() {
     nlohmann::json json;
     for (auto &[key, opt_map] : times) {
-      nlohmann::json key_json = to_json(key);
+      nlohmann::json key_json;
+      key_json["key"] = to_json(key);
 
       key_json["options"] = nlohmann::json();
       for (auto &[opt, ts] : opt_map) {

@@ -38,6 +38,9 @@ nlohmann::json dispatch_tests(Input_File& file) {
     case Method::GEMM:
       return dispatch_tests<GEMM_Executor>(file);
 
+    case Method::GEMM_PAD:
+      return dispatch_tests<GEMM_Executor_Pad>(file);
+
     case Method::SYRK:
       return dispatch_tests<SYRK_Executor>(file);
 
@@ -60,10 +63,7 @@ int main(int argc, char *argv[]) {
   Input_File input_file(input_json);
   nlohmann::json output_json;
   output_json["problems"] = dispatch_tests(input_file);
-  output_json["run_type"] = input_json["run_type"];
-  output_json["method"] = input_json["method"];
-  output_json["data_type"] = input_json["data_type"];
-  output_json["repetitions"] = input_json["repetitions"];
+  output_json["keywords"] = input_json["keywords"];
   std::cout << output_json.dump(2) << std::endl;
 
   return 0;

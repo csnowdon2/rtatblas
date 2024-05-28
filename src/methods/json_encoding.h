@@ -44,8 +44,35 @@ inline GEMM_Key from_json(const nlohmann::json json) {
         json["n"].get<int>());
 }
 
-template<typename A, typename B, typename C, typename D, typename E, typename F>
+template<typename A, typename B, typename C>
 constexpr bool verify_GEMM_Options_components() {
+  return std::is_same_v<A, BLAS_Op>
+      && std::is_same_v<B, BLAS_Op>
+      && std::is_same_v<C, BLAS_Op>;
+}
+
+inline nlohmann::json to_json(GEMM_Options opts) {
+  nlohmann::json json;
+  auto &[ta, tb, tc] = opts;
+  static_assert(verify_GEMM_Options_components<decltype(ta),
+      decltype(tb), decltype(tc)>());
+
+  json["transA"] = std::string(ta);
+  json["transB"] = std::string(tb);
+  json["transC"] = std::string(tc);
+  return json;
+}
+
+template<>
+inline GEMM_Options from_json(const nlohmann::json json) {
+  return GEMM_Options(
+      BLAS_Op(json["transA"].get<std::string>()),
+      BLAS_Op(json["transB"].get<std::string>()),
+      BLAS_Op(json["transC"].get<std::string>()));
+}
+
+template<typename A, typename B, typename C, typename D, typename E, typename F>
+constexpr bool verify_GEMM_Options_Pad_components() {
   return std::is_same_v<A, BLAS_Op>
       && std::is_same_v<B, Pad_Op>
       && std::is_same_v<C, BLAS_Op>
@@ -54,10 +81,10 @@ constexpr bool verify_GEMM_Options_components() {
       && std::is_same_v<F, Pad_Op>;
 }
 
-inline nlohmann::json to_json(GEMM_Options opts) {
+inline nlohmann::json to_json(GEMM_Options_Pad opts) {
   nlohmann::json json;
   auto &[ta, pa, tb, pb, tc, pc] = opts;
-  static_assert(verify_GEMM_Options_components<decltype(ta),decltype(pa),
+  static_assert(verify_GEMM_Options_Pad_components<decltype(ta),decltype(pa),
       decltype(tb),decltype(pb),decltype(tc),decltype(pc)>());
 
   json["transA"] = std::string(ta);
@@ -70,8 +97,8 @@ inline nlohmann::json to_json(GEMM_Options opts) {
 }
 
 template<>
-inline GEMM_Options from_json(const nlohmann::json json) {
-  return GEMM_Options(
+inline GEMM_Options_Pad from_json(const nlohmann::json json) {
+  return GEMM_Options_Pad(
       BLAS_Op(json["transA"].get<std::string>()),
       Pad_Op(json["padA"].get<std::string>()),
       BLAS_Op(json["transB"].get<std::string>()),
