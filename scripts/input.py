@@ -15,6 +15,8 @@
 # m, n, side, uploA, transA, diagA
 # FLOPS=n*m^2 (LEFT), m*n^2 (RIGHT)
 import random
+import argparse
+import json
 
 class Opt:
     def __init__(self, op):
@@ -54,23 +56,45 @@ def enumerate(Opt_Type):
 
 class GEMM_Key:
     def __init__(self, m, k, n, 
-                 transA = Trans_Opt(), 
-                 transB = Trans_Opt()):
+                 transA = None, 
+                 transB = None):
         self.m = m
         self.k = k
         self.n = n
         self.transA = transA
         self.transB = transB
+        if transA is None:
+            op = Trans_Opt()
+            self.transA = op
+        if transB is None:
+            op = Trans_Opt()
+            self.transB = op
 
     def randomize_opts(self):
-        self.opA.randomize()
-        self.opB.randomize()
+        self.transA.randomize()
+        self.transB.randomize()
+
+    def enumerate_opts(self):
+        ret = []
+        for transA in enumerate(Trans_Opt):
+            for transB in enumerate(Trans_Opt):
+                ret.append(GEMM_Key(self.m,self.k,self.n,transA,transB))
+        return ret
 
     def flop_count(self):
         return 2*self.m*self.k*self.n
 
     def memory_footprint(self):
         return self.m*self.k + self.k*self.n + self.m*self.n
+
+    def json(self):
+        ret = {}
+        ret["m"] = self.m
+        ret["k"] = self.k
+        ret["n"] = self.n
+        ret["transA"] = self.transA
+        ret["transB"] = self.transB
+        return ret
 
 class GEMM_Aspects:
     def __init__(self):
@@ -112,11 +136,26 @@ class SYRK_Key:
         self.trans.randomize()
         self.uplo.randomize()
 
+    def enumerate_opts(self):
+        ret = []
+        for trans in enumerate(Trans_Opt):
+            for uplo in enumerate(Uplo_Opt):
+                ret.append(SYRK_Key(self.n, self.k, trans, uplo))
+        return ret
+
     def flop_count(self):
         return k*n*(n+1)
 
     def memory_footprint(self):
         return self.n*self.n + self.k*self.n
+
+    def json(self):
+        ret = {}
+        ret["n"] = self.n 
+        ret["k"] = self.k 
+        ret["trans"] = self.trans
+        ret["uplo"] = self.uplo
+        return ret
 
 class SYRK_Aspects:
     def __init__(self):
@@ -140,7 +179,7 @@ class SYRK_Aspects:
         return int((flopcount/self.aspect)**(1/3))
 
     def N_from_mem(self, mem):
-        return int((mem/(1+self.aspect)))**(1/2))
+        return int(((mem/(1+self.aspect)))**(1/2))
 
 class TRSM_Key:
     def __init__(self, m, n, 
@@ -156,10 +195,25 @@ class TRSM_Key:
         self.diag = diag
 
     def randomize_opts(self):
+        old_side = self.side
         self.side.randomize()
+        if old_side != self.side:
+            (self.m,self.n) = (self.n,self.m)
         self.uplo.randomize()
         self.trans.randomize()
         self.diag.randomize()
+
+    def enumerate_opts(self):
+        ret = []
+        for uplo in enumerate(Uplo_Opt):
+            for trans in enumerate(Trans_Opt):
+                for diag in enumerate(Diag_Opt):
+                    for side in enumerate(Side_Opt):
+                        m = self.m if side.op == "Left" else self.n
+                        n = self.n if side.op == "Left" else self.m
+                        ret.append(TRSM_Key(m,n,side,uplo,trans,diag))
+        return ret
+
 
     def flop_count(self):
         if self.side.op == "Left":
@@ -172,6 +226,16 @@ class TRSM_Key:
             return self.m*self.m + self.m*self.n
         else:
             return self.n*self.n + self.m*self.n
+
+    def json(self):
+        ret = {}
+        ret["m"] = self.m
+        ret["n"] = self.n
+        ret["side"] = self.side
+        ret["uplo"] = self.uplo
+        ret["trans"] = self.trans
+        ret["diag"] = self.diag
+        return ret
 
 class TRSM_Aspects:
     def __init__(self):
@@ -196,9 +260,109 @@ class TRSM_Aspects:
         return int((flopcount/self.aspect)**(1/3))
 
     def N_from_mem(self, mem):
-        return int((mem/(1+self.aspect)))**(1/2))
+        return int(((mem/(1+self.aspect)))**(1/2))
 
+def random_gemm(mem, aspect_bound):
+    aspects = GEMM_Aspects(aspect_bound)
+    N = aspects.N_from_mem(mem)
+    (m,k,n) = aspects.dims(N)
+    return GEMM_Key(m,k,n)
+
+def random_syrk(mem, aspect_bound):
+    aspects = SYRK_Aspects(aspect_bound)
+    N = aspects.N_from_mem(mem)
+    (n,k) = aspects.dims(N)
+    return SYRK_Key(n,k)
+
+def random_trsm(mem, aspect_bound):
+    aspects = TRSM_Aspects(aspect_bound)
+    N = aspects.N_from_mem(mem)
+    (m,n) = aspects.dims(N)
+    return TRSM_Key(m,n)
 
 
 opt = Uplo_Opt("Upper")
-print(enumerate(Uplo_Opt))
+#print(random_gemm(10000, 3).json())
+#print(random_syrk(10000, 3).json())
+#print(random_trsm(10000, 3).json())
+
+def generate(generator, count, mem_lower, mem_upper, aspect_bound,
+             opts = "default", seed = 0):
+    keys = []
+    random.seed(seed)
+    for _ in range(count):
+        mem = random.uniform(mem_lower, mem_upper)
+        key = generator(mem, aspect_bound)
+
+        if opts == "default":
+            keys.append(key)
+        elif opts == "random":
+            key.randomize_opts()
+            keys.append(key)
+        elif opts == "all":
+            keys.extend(key.enumerate_opts())
+        else:
+            raise Exception(f"Invalid opts setting: {opts}")
+
+    return keys
+
+class Args:
+  def __init__(self):
+    parser = argparse.ArgumentParser(description="Randomly generate GEMM problems.")
+    parser.add_argument('-n', default=10, type=int, help='Number of problems to generate')
+    parser.add_argument('-m', required=True, help='Memory footprint lower/upper bounds')
+    parser.add_argument('--dt', default='double', choices=['float','double'], help='Matrix data type')
+    parser.add_argument('--rt', default='autotune', choices=['exhaustive','autotune'], help='Run type')
+    parser.add_argument('-a', default=3, type=int, help='Aspect ratio bound')
+    parser.add_argument('--method', choices=['gemm','syrk','trsm'])
+    parser.add_argument('--opts', default='default', choices=['default','random','all'])
+    parser.add_argument('-o', default='', help='Output file name')
+    parser.add_argument('-s', default='0', type=int, help='Random Seed')
+    parser.add_argument('-r', default='5', type=int, help='Repetitions')
+
+    args = parser.parse_args()
+
+    self.data_type = args.dt
+    self.run_type = args.rt
+
+    self.num_problems = args.n
+    self.aspect_bound = args.a
+    self.opts = args.opts
+    self.method = args.method
+    self.repetitions = args.r
+
+    mem_bounds = args.m.split(',')
+    self.mem_lb = int(float(mem_bounds[0])*1024**3)
+    self.mem_ub = int(float(mem_bounds[1])*1024**3)
+
+    self.filename = args.o
+    self.seed = args.s
+
+args = Args()
+generator = None
+if args.method == "gemm":
+    generator = random_gemm
+if args.method == "syrk":
+    generator = random_syrk
+if args.method == "trsm":
+    generator = random_trsm
+
+dt_size = 0 
+if args.data_type == "double":
+    dt_size = 8
+elif args.data_type == "float":
+    dt_size = 4
+else:
+    raise Exception(f"Bad data type {args.data_type}")
+keys = generate(generator, args.num_problems, args.mem_lb//dt_size, args.mem_ub//dt_size, args.aspect_bound, opts=args.opts)
+
+output_json = {}
+output_json["method"] = args.method 
+output_json["data_type"] = args.data_type
+output_json["run_type"] = args.run_type
+output_json["repetitions"] = args.repetitions         # TODO TAKE THIS FROM ARGS
+output_json["problems"] = [key.json() for key in keys]
+
+print(output_json)
+
+# EXAMPLE: python3 scripts/input.py -n 10 -r 5 -m 0.1,1 --rt autotune --dt double -a 2 --method gemm --opts random
