@@ -92,8 +92,8 @@ class GEMM_Key:
         ret["m"] = self.m
         ret["k"] = self.k
         ret["n"] = self.n
-        ret["transA"] = self.transA
-        ret["transB"] = self.transB
+        ret["transA"] = str(self.transA)
+        ret["transB"] = str(self.transB)
         return ret
 
 class GEMM_Aspects:
@@ -125,12 +125,16 @@ class GEMM_Aspects:
 
 class SYRK_Key:
     def __init__(self, n, k, 
-                 trans = Trans_Opt(), 
-                 uplo = Uplo_Opt()):
+                 trans = None, 
+                 uplo = None):
         self.n = n
         self.k = k
         self.trans = trans
         self.uplo = uplo
+        if trans is None:
+            self.trans = Trans_Opt()
+        if uplo is None:
+            self.uplo = Uplo_Opt()
 
     def randomize_opts(self):
         self.trans.randomize()
@@ -153,8 +157,8 @@ class SYRK_Key:
         ret = {}
         ret["n"] = self.n 
         ret["k"] = self.k 
-        ret["trans"] = self.trans
-        ret["uplo"] = self.uplo
+        ret["trans"] = str(self.trans)
+        ret["uplo"] = str(self.uplo)
         return ret
 
 class SYRK_Aspects:
@@ -183,16 +187,24 @@ class SYRK_Aspects:
 
 class TRSM_Key:
     def __init__(self, m, n, 
-                 side = Side_Opt(), 
-                 uplo = Uplo_Opt(), 
-                 trans = Trans_Opt(), 
-                 diag = Diag_Opt()):
+                 side = None, 
+                 uplo = None, 
+                 trans = None, 
+                 diag = None):
         self.m = m
         self.n = n
         self.side = side
         self.uplo = uplo
         self.trans = trans
         self.diag = diag
+        if side is None:
+            self.side = Side_Opt()
+        if uplo is None:
+            self.uplo = Uplo_Opt()
+        if trans is None:
+            self.trans = Trans_Opt()
+        if diag is None:
+            self.diag = Diag_Opt()
 
     def randomize_opts(self):
         old_side = self.side
@@ -231,10 +243,10 @@ class TRSM_Key:
         ret = {}
         ret["m"] = self.m
         ret["n"] = self.n
-        ret["side"] = self.side
-        ret["uplo"] = self.uplo
-        ret["trans"] = self.trans
-        ret["diag"] = self.diag
+        ret["side"] = str(self.side)
+        ret["uplo"] = str(self.uplo)
+        ret["trans"] = str(self.trans)
+        ret["diag"] = str(self.diag)
         return ret
 
 class TRSM_Aspects:
@@ -354,15 +366,34 @@ elif args.data_type == "float":
     dt_size = 4
 else:
     raise Exception(f"Bad data type {args.data_type}")
-keys = generate(generator, args.num_problems, args.mem_lb//dt_size, args.mem_ub//dt_size, args.aspect_bound, opts=args.opts)
+
+keys = generate(generator, args.num_problems, 
+                args.mem_lb//dt_size, args.mem_ub//dt_size, 
+                args.aspect_bound, opts=args.opts,
+                seed=args.seed)
 
 output_json = {}
-output_json["method"] = args.method 
-output_json["data_type"] = args.data_type
-output_json["run_type"] = args.run_type
-output_json["repetitions"] = args.repetitions         # TODO TAKE THIS FROM ARGS
+output_json["keywords"] = {}
+output_json["keywords"]["method"] = args.method
+output_json["keywords"]["data_type"] = args.data_type
+output_json["keywords"]["run_type"] = args.run_type
+output_json["keywords"]["repetitions"] = args.repetitions
+
+output_json["metadata"] = {}
+output_json["metadata"]["seed"] = args.seed
+output_json["metadata"]["mem_lb"] = args.mem_lb
+output_json["metadata"]["mem_ub"] = args.mem_ub
+output_json["metadata"]["num_problems"] = args.num_problems
+output_json["metadata"]["aspect_bound"] = args.aspect_bound
+output_json["metadata"]["opts"] = args.opts
+
 output_json["problems"] = [key.json() for key in keys]
 
-print(output_json)
+if args.filename != "":
+    with open(args.filename,'w') as file:
+        json.dump(output_json, file, indent=2)
+else:
+    print(json.dumps(output_json, indent=2))
+#print(output_json)
 
-# EXAMPLE: python3 scripts/input.py -n 10 -r 5 -m 0.1,1 --rt autotune --dt double -a 2 --method gemm --opts random
+# EXAMPLE: python3 scripts/input.py -n 10 -r 5 -m 0.1,1 --rt autotune--dt double -a 2 --method gemm --opts random
