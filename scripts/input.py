@@ -148,7 +148,7 @@ class SYRK_Key:
         return ret
 
     def flop_count(self):
-        return k*n*(n+1)
+        return self.k*self.n*(self.n+1)
 
     def memory_footprint(self):
         return self.n*self.n + self.k*self.n
