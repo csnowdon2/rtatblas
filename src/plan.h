@@ -5,6 +5,12 @@
 #ifdef CUDA
 #include <cublas_v2.h>
 #else
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-copy-with-user-provided-copy"
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#pragma clang diagnostic ignored "-Wnested-anon-types"
+#endif
 #include <hipblas.h>
 #endif
 #include "options.h"
