@@ -136,15 +136,16 @@ struct Input_File {
 };
 
 struct Device_Resources {
+public:
+  Stream s;
 private:
   ManagedWorkspace space;
   Device_RNG rng;
 public:
-  Stream s;
   cublasHandle_t handle;
   ManagedWorkspace scratch_space;
 
-  Device_Resources() : space(1024), scratch_space(1024) {
+  Device_Resources() : s(), space(1024), rng(s), scratch_space(1024){
     cublasCreate(&handle);
     cublasSetStream(handle,s);
   }
@@ -171,8 +172,11 @@ public:
 
     size_t offset = 0;
     for (size_t i=0; i<dim_vector.size(); i++) {
-      Workspace ws(space, offset, sizes[i]);
+      Workspace ws(space, offset, sizes[i]*sizeof(T));
       rng.uniform<T>((T*)ws, ws.size<T>());
+      std::cout << "Size = " << sizes[i] << std::endl;
+      std::cout << "Randomizing " << ws.size<T>() << " elements" << std::endl;
+      std::cout << "Offset = " << offset << std::endl;
 
       ret.emplace_back(ws, dim_vector[i]);
       offset += sizes[i]*sizeof(T);

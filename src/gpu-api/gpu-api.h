@@ -4,9 +4,17 @@
 #include <cublas_v2.h>
 #include <curand.h>
 #else
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#pragma clang diagnostic ignored "-Wnested-anon-types"
+#endif
 #include <hip/hip_runtime.h>
 #include <hipblas/hipblas.h>
 #include <hiprand/hiprand.h>
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 #define cudaMemGetInfo hipMemGetInfo
 #define cudaEventCreate hipEventCreate
 #define cudaEventDestroy hipEventDestroy
@@ -58,6 +66,7 @@
 #define cudaGetErrorString hipGetErrorString 
 #define cudaError_t hipError_t 
 #define curandGenerator_t hiprandGenerator_t
+#define curandSetStream hiprandSetStream
 #define curandCreateGenerator hiprandCreateGenerator
 #define curandDestroyGenerator hiprandDestroyGenerator
 #define curandGenerateUniformDouble hiprandGenerateUniformDouble
@@ -91,46 +100,11 @@ inline void gpu_error_check(cudaError_t code, const char* file, int line)
               << " " << file << " " << line << std::endl;
 }
 
-class Raw_Device_RNG {
-public:
-  friend class Device_RNG;
-  virtual ~Raw_Device_RNG() = default;
-protected:
-  Raw_Device_RNG() = default;
-  curandGenerator_t rng;
-};
-
-class Device_RNG {
-public:
-  Device_RNG();
-
-  Device_RNG(const Device_RNG& other);
-  Device_RNG& operator=(const Device_RNG& other);
-
-  operator curandGenerator_t();
-
-  template<typename T>
-  void uniform(T*, size_t);
-
-  template<>
-  void uniform(double *A, size_t len) {
-    curandGenerateUniformDouble(raw_rng->rng, A, len);
-  }
-
-  template<>
-  void uniform(float *A, size_t len) {
-    curandGenerateUniform(raw_rng->rng, A, len);
-  }
-
-private:
-  std::shared_ptr<Raw_Device_RNG> raw_rng;
-};
-
-
 // Stream and Event wrappers, intended to mimic the semantics of 
 // the native API types but with automatic resource management.
 class Stream;
 class Event;
+
 
 class Raw_Stream {
 public:
@@ -188,6 +162,48 @@ public:
 private:
   std::shared_ptr<Raw_Event> raw_event;
 };
+
+class Raw_Device_RNG {
+public:
+  friend class Device_RNG;
+  virtual ~Raw_Device_RNG() = default;
+protected:
+  Raw_Device_RNG() = default;
+  curandGenerator_t rng;
+};
+
+class Device_RNG {
+public:
+  Device_RNG();
+  Device_RNG(Stream s) : Device_RNG() { set_stream(s); }
+
+  Device_RNG(const Device_RNG& other);
+  Device_RNG& operator=(const Device_RNG& other);
+
+  operator curandGenerator_t();
+
+  void set_stream(Stream s) {
+    curandSetStream(raw_rng->rng, s);
+  }
+
+  template<typename T>
+  void uniform(T*, size_t);
+
+  template<>
+  void uniform(double *A, size_t len) {
+    curandGenerateUniformDouble(raw_rng->rng, A, len);
+  }
+
+  template<>
+  void uniform(float *A, size_t len) {
+    curandGenerateUniform(raw_rng->rng, A, len);
+  }
+
+private:
+  std::shared_ptr<Raw_Device_RNG> raw_rng;
+};
+
+
 
 
 template<typename T,

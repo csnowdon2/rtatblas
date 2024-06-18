@@ -61,9 +61,8 @@ int main(int argc, char *argv[]) {
     = nlohmann::json::parse(std::ifstream(filename));
 
   Input_File input_file(input_json);
-  nlohmann::json output_json;
+  nlohmann::json output_json = input_json;
   output_json["problems"] = dispatch_tests(input_file);
-  output_json["keywords"] = input_json["keywords"];
   std::cout << output_json.dump(2) << std::endl;
 
   return 0;

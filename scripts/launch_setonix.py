@@ -10,7 +10,7 @@ input_json = None
 with open(filename) as file:
     input_json = json.load(file)
 
-hours = estimate_time(input_json, 26, 52)
+hours = 2*estimate_time(input_json, 26, 52)
 
 cmd = ["sbatch", "--account=director2178-gpu", "--nodes=1",
        "--gpus-per-node=1", "--partition=gpu", 

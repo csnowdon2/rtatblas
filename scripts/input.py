@@ -207,9 +207,9 @@ class TRSM_Key:
             self.diag = Diag_Opt()
 
     def randomize_opts(self):
-        old_side = self.side
+        old_side = self.side.op
         self.side.randomize()
-        if old_side != self.side:
+        if old_side != self.side.op:
             (self.m,self.n) = (self.n,self.m)
         self.uplo.randomize()
         self.trans.randomize()
@@ -221,8 +221,8 @@ class TRSM_Key:
             for trans in enumerate(Trans_Opt):
                 for diag in enumerate(Diag_Opt):
                     for side in enumerate(Side_Opt):
-                        m = self.m if side.op == "Left" else self.n
-                        n = self.n if side.op == "Left" else self.m
+                        m = self.m if side.op != self.side.op else self.n
+                        n = self.n if side.op != self.side.op else self.m
                         ret.append(TRSM_Key(m,n,side,uplo,trans,diag))
         return ret
 

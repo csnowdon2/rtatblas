@@ -22,8 +22,8 @@ AT_REPS=20
 for METHOD in gemm trsm syrk; do
   for PRECISION in float double; do
     for TYPE in exhaustive; do
-      python3 $GENERATE -s 500 -n 100 -r ${EX_REPS} -m ${SMALL} -a 3 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_small.json
-      python3 $GENERATE -s 600 -n 100 -r ${EX_REPS} -m ${LARGE} -a 3 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_large.json
+      python3 $GENERATE -s 500 -n 100 -r ${EX_REPS} -m ${SMALL} -a 3 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_small.json
+      python3 $GENERATE -s 600 -n 100 -r ${EX_REPS} -m ${LARGE} -a 3 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_large.json
     done
   done
 done
@@ -32,8 +32,8 @@ done
 for METHOD in gemm trsm syrk; do
   for PRECISION in float double; do
     for TYPE in exhaustive; do
-      python3 $GENERATE -s 500 -n 30 -r ${EX_REPS} -m ${SMALL} -a 0 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_small.json
-      python3 $GENERATE -s 600 -n 30 -r ${EX_REPS} -m ${LARGE} -a 0 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_large.json
+      python3 $GENERATE -s 500 -n 30 -r ${EX_REPS} -m ${SMALL} -a 0 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_small.json
+      python3 $GENERATE -s 600 -n 30 -r ${EX_REPS} -m ${LARGE} -a 0 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_large.json
     done
   done
 done
@@ -44,8 +44,8 @@ done
 for METHOD in gemm trsm syrk; do
   for PRECISION in float double; do
     for TYPE in autotune; do
-      python3 $GENERATE -s 500 -n 100 -r ${AT_REPS} -m ${SMALL} -a 3 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_small.json
-      python3 $GENERATE -s 600 -n 100 -r ${AT_REPS} -m ${LARGE} -a 3 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_large.json
+      python3 $GENERATE -s 500 -n 100 -r ${AT_REPS} -m ${SMALL} -a 3 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_small.json
+      python3 $GENERATE -s 600 -n 100 -r ${AT_REPS} -m ${LARGE} -a 3 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_rectangle_large.json
     done
   done
 done
@@ -54,8 +54,8 @@ done
 for METHOD in gemm trsm syrk; do
   for PRECISION in float double; do
     for TYPE in autotune; do
-      python3 $GENERATE -s 500 -n 30  -r ${AT_REPS} -m ${SMALL} -a 0 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_small.json
-      python3 $GENERATE -s 600 -n 30  -r ${AT_REPS} -m ${LARGE} -a 0 --opts default --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_large.json
+      python3 $GENERATE -s 500 -n 30  -r ${AT_REPS} -m ${SMALL} -a 0 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_small.json
+      python3 $GENERATE -s 600 -n 30  -r ${AT_REPS} -m ${LARGE} -a 0 --opts random --rt $TYPE --dt $PRECISION --method $METHOD -o ${OUTPUT_DIR}/${METHOD}_${PRECISION}_${TYPE}_square_large.json
     done
   done
 done
