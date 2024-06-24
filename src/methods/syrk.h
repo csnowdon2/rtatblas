@@ -99,12 +99,12 @@ protected:
           A, n,
           &beta,
           C, n);
-        if (status != CUBLAS_SUCCESS) {
+        if (status != CUBLAS_STATUS_SUCCESS) {
           std::cout << "Fuc" << std::endl;
         }
         status = cublasDgeam(params.handle, CUBLAS_OP_N, CUBLAS_OP_T, 
             n,n, &alpha, A, n, &beta, C, n, A, n);
-        if (status != CUBLAS_SUCCESS) {
+        if (status != CUBLAS_STATUS_SUCCESS) {
           std::cout << "Fuc" << std::endl;
         }
       }

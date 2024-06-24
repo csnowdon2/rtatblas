@@ -20,6 +20,7 @@ nlohmann::json dispatch_tests(Input_File &file) {
     case Run_Type::AUTOTUNE:
       return harness.run_autotune(file.repetitions);
   }
+  __builtin_unreachable();
 }
 
 template<template <typename> typename Executor>
@@ -31,6 +32,7 @@ nlohmann::json dispatch_tests(Input_File& file) {
     case Data_Type::DOUBLE:
       return dispatch_tests<Executor<double>>(file);
   }
+  __builtin_unreachable();
 }
 
 nlohmann::json dispatch_tests(Input_File& file) {
@@ -47,6 +49,7 @@ nlohmann::json dispatch_tests(Input_File& file) {
     case Method::TRSM:
       return dispatch_tests<TRSM_Executor>(file);
   }
+  __builtin_unreachable();
 }
 
 int main(int argc, char *argv[]) {

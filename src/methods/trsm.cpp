@@ -19,7 +19,7 @@ bool TRSM_Key::operator<(const TRSM_Key& rhs) const {
   return std::string(*this) < std::string(rhs);
 }
 
-std::ostream& rtat::operator<<(std::ostream& os, const TRSM_Key& dt) {
+std::ostream& operator<<(std::ostream& os, const TRSM_Key& dt) {
     os << std::string(dt);
     return os;
 }
@@ -49,7 +49,7 @@ bool TRSM_Options::operator<(const TRSM_Options& o) const {
   return std::string(*this) < std::string(o);
 }
 
-std::ostream& rtat::operator<<(std::ostream& os, const TRSM_Options opts) {
+std::ostream& operator<<(std::ostream& os, const TRSM_Options opts) {
   os << std::string(opts); 
   return os;
 }

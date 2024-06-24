@@ -18,7 +18,7 @@ bool SYRK_Key::operator<(const SYRK_Key& rhs) const {
   return std::string(*this) < std::string(rhs);
 }
 
-std::ostream& rtat::operator<<(std::ostream& os, const SYRK_Key& dt) {
+std::ostream& operator<<(std::ostream& os, const SYRK_Key& dt) {
     os << std::string(dt);
     return os;
 }
@@ -48,7 +48,7 @@ bool SYRK_Options::operator<(const SYRK_Options& o) const {
   return std::string(*this) < std::string(o);
 }
 
-std::ostream& rtat::operator<<(std::ostream& os, const SYRK_Options opts) {
+std::ostream& operator<<(std::ostream& os, const SYRK_Options opts) {
   os << std::string(opts); 
   return os;
 }

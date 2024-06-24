@@ -44,7 +44,7 @@
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
 #define cublasCreate hipblasCreate
 #define cublasDestroy hipblasDestroy
-#define CUBLAS_SUCCESS HIP_SUCCESS
+#define CUBLAS_STATUS_SUCCESS HIP_SUCCESS
 #define cublasDgeam hipblasDgeam
 #define cublasDgemm hipblasDgemm
 #define cublasDtrsm hipblasDtrsm
@@ -186,15 +186,15 @@ public:
     curandSetStream(raw_rng->rng, s);
   }
 
-  template<typename T>
+  template<typename T, typename IGNORE = void>
   void uniform(T*, size_t);
 
-  template<>
+  template<typename IGNORE>
   void uniform(double *A, size_t len) {
     curandGenerateUniformDouble(raw_rng->rng, A, len);
   }
 
-  template<>
+  template<typename IGNORE>
   void uniform(float *A, size_t len) {
     curandGenerateUniform(raw_rng->rng, A, len);
   }
@@ -206,16 +206,16 @@ private:
 
 
 
-template<typename T,
-  const std::map<T, std::string>* const str_map>
+template<class str_map>
 class String_Rep {
+  using T = typename decltype(str_map::map())::key_type;
   T val;
 public:
   String_Rep(T val) : val(val) {}
   operator T() const {return val;}
 
   String_Rep(std::string str) {
-    for (auto &[k,v] : *str_map) {
+    for (auto &[k,v] : str_map::map()) {
       if (v == str) {
         val = k;
         return;
@@ -225,19 +225,20 @@ public:
   }
 
   operator std::string() const {
-    if (auto search = str_map->find(val); search != str_map->end()) {
+    auto map = str_map::map();
+    if (auto search = map.find(val); search != map.end()) {
       return search->second;
     }
     throw std::runtime_error("Invalid string rep value");
   }
 
   String_Rep operator!() const {
-    if (str_map->size() != 2) {
+    if (str_map::map().size() != 2) {
       throw std::runtime_error(
           "operator! applied to non-binary String_Rep");
     }
 
-    for (auto &[k,v] : *str_map) {
+    for (auto &[k,v] : str_map::map()) {
       if (k != val) {
         return String_Rep(k);
       }
@@ -254,26 +255,36 @@ public:
   }
 };
 
+struct BLAS_Operation_Str_Map {
+  static std::map<cublasOperation_t, std::string> map() {
+    return {{CUBLAS_OP_N, "N"}, 
+            {CUBLAS_OP_T, "T"}};
+  }
+};
+using BLAS_Operation = String_Rep<BLAS_Operation_Str_Map>;
 
-static const std::map<cublasOperation_t, std::string> 
-  blas_op_str_map   = {{CUBLAS_OP_N, "N"}, 
-                       {CUBLAS_OP_T, "T"}};
+struct BLAS_Fill_Mode_Str_Map {
+  static std::map<cublasFillMode_t, std::string> map() {
+    return {{CUBLAS_FILL_MODE_LOWER, "Lower"}, 
+            {CUBLAS_FILL_MODE_UPPER, "Upper"}};
+  }
+};
+using BLAS_Fill_Mode = String_Rep<BLAS_Fill_Mode_Str_Map>;
 
-static const std::map<cublasFillMode_t, std::string> 
-  blas_fill_str_map = {{CUBLAS_FILL_MODE_LOWER, "Lower"}, 
-                       {CUBLAS_FILL_MODE_UPPER, "Upper"}};
+struct BLAS_Side_Str_Map {
+  static std::map<cublasSideMode_t, std::string> map() {
+    return {{CUBLAS_SIDE_LEFT,  "Left"},
+            {CUBLAS_SIDE_RIGHT, "Right"}};
+  }
+};
+using BLAS_Side = String_Rep<BLAS_Side_Str_Map>;
 
-static const std::map<cublasSideMode_t, std::string> 
-  blas_side_str_map = {{CUBLAS_SIDE_LEFT,  "Left"},
-                       {CUBLAS_SIDE_RIGHT, "Right"}};
-
-static const std::map<cublasDiagType_t, std::string> 
-  blas_diag_str_map = {{CUBLAS_DIAG_UNIT,     "Unit"},
-                       {CUBLAS_DIAG_NON_UNIT, "Non-Unit"}};
-
-using BLAS_Operation = String_Rep<cublasOperation_t, &blas_op_str_map>;
-using BLAS_Fill_Mode = String_Rep<cublasFillMode_t, &blas_fill_str_map>;
-using BLAS_Side      = String_Rep<cublasSideMode_t, &blas_side_str_map>;
-using BLAS_Diag      = String_Rep<cublasDiagType_t, &blas_diag_str_map>;
+struct BLAS_Diag_Str_Map {
+  static std::map<cublasDiagType_t, std::string> map() {
+    return {{CUBLAS_DIAG_UNIT,     "Unit"},
+            {CUBLAS_DIAG_NON_UNIT, "Non-Unit"}};
+  }
+};
+using BLAS_Diag = String_Rep<BLAS_Diag_Str_Map>;
 
 }

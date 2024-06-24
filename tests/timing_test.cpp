@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <timer_bank.h>
 #include <device_timer.h>
+#include <thread>
 
 using namespace rtat;
 
