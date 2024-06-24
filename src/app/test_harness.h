@@ -174,9 +174,6 @@ public:
     for (size_t i=0; i<dim_vector.size(); i++) {
       Workspace ws(space, offset, sizes[i]*sizeof(T));
       rng.uniform<T>((T*)ws, ws.size<T>());
-      std::cout << "Size = " << sizes[i] << std::endl;
-      std::cout << "Randomizing " << ws.size<T>() << " elements" << std::endl;
-      std::cout << "Offset = " << offset << std::endl;
 
       ret.emplace_back(ws, dim_vector[i]);
       offset += sizes[i]*sizeof(T);
