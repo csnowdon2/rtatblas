@@ -5,17 +5,20 @@ endif()
 set (CMAKE_CXX_STANDARD 17)
 project(RTATBLAS)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # GPU libraries
 find_package(CUDAToolkit)
 
 if (NOT CUDAToolkit_FOUND)
   find_package(HIP REQUIRED)
   find_package(hipBLAS REQUIRED)
+  find_package(hiprand REQUIRED)
   find_package(rocBLAS REQUIRED)
-  set(GPU_LIBRARIES hip::host roc::rocblas roc::hipblas)
+  set(GPU_LIBRARIES hip::host roc::rocblas roc::hipblas hip::hiprand)
   add_definitions(-DHIP)
 else()
-  set(GPU_LIBRARIES CUDA::cudart CUDA::cublas)
+  set(GPU_LIBRARIES CUDA::cudart CUDA::cublas CUDA::curand)
   add_definitions(-DCUDA)
 endif()
 message("GPU LIBS " ${GPU_LIBRARIES})
@@ -29,11 +32,11 @@ if  (NOT nlohmann_json_FOUND)
   FetchContent_MakeAvailable(json)
 endif()
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -Wpedantic -Werror")
 
 add_subdirectory(src)
 enable_testing()
 add_subdirectory(tests)
 
 install(TARGETS rtatblas RUNTIME DESTINATION lib)
-install(TARGETS autotune RUNTIME DESTINATION bin)
+#install(TARGETS autotune RUNTIME DESTINATION bin)

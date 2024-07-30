@@ -1,9 +1,7 @@
 #include <gtest/gtest.h>
-#include <random>
 #include <matrixop.h>
 #include <gpu-api.h>
 #include <iostream>
-#include <chrono>
 #include "common.h"
 
 class MatrixOp_Test : public BLAS_Test {};
@@ -12,15 +10,15 @@ class MatrixOp_Test : public BLAS_Test {};
 TEST_F(MatrixOp_Test, MoveTest) {
   const int n = 12;
   const int m = 10;
-  TestMatrix A(m,n,m);
+  TestMatrix<double> A(m,n,m);
 
-  std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
+  std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
   MatrixMove Bop(std::move(Aop), 1.0, false, 32);
 
   auto dims = Bop.dims();
-  TestMatrix B(dims.m,dims.n,dims.ld);
+  TestMatrix<double> B(dims.m,dims.n,dims.ld);
 
-  ManagedWorkspace scratch(Bop.scratch_space_req());
+  ManagedWorkspace scratch(Bop.scratch_space_req_bytes());
 
   Bop.execute(handle, B.workspace(), scratch);
   B.download();
@@ -37,18 +35,18 @@ TEST_F(MatrixOp_Test, MatMulTest) {
   int k = 34;
   int n = 27;
 
-  TestMatrix A(m,k,m);
-  TestMatrix B(k,n,k);
-  TestMatrix C(m,n,m);
+  TestMatrix<double> A(m,k,m);
+  TestMatrix<double> B(k,n,k);
+  TestMatrix<double> C(m,n,m);
 
   {
-    std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
-    std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
-    std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
+    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
 
     MatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, 1.0, 0.0);
     ASSERT_EQ(mult.output_space_req(), 0);
-    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req()));
+    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req_bytes()));
 
     C.download();
   }
@@ -57,36 +55,208 @@ TEST_F(MatrixOp_Test, MatMulTest) {
   ASSERT_TRUE(C.is_zero());
 }
 
+TEST_F(MatrixOp_Test, TestTrsmTest) {
+  int m = 5;
+  int n = 6;
+
+  TestMatrix<double> A_raw(m,m,m);
+
+  for (auto side_left : {false,true}) {
+    for (auto lower : {false,true}) {
+      for (auto unit_diag : {false,true}) {
+        for (auto trans : {false,true}) {
+          TestMatrix<double> A(m,m,m);
+          int m_X = side_left ? m : n;
+          int n_X = side_left ? n : m;
+          TestMatrix<double> X(m_X,n_X,m_X);
+          TestMatrix<double> B(m_X,n_X,m_X);
+          TestMatrix<double> B_test(m_X,n_X,m_X);
+          if (lower) {
+            for (int i=0; i<m; i++) {
+              for (int j=0; j<m; j++) {
+                if (i > j) 
+                  A.host_vector[i*A.ld+j] = 0.0;
+              }
+            }
+          } else {
+            for (int i=0; i<m; i++) {
+              for (int j=0; j<m; j++) {
+                if (i < j) 
+                  A.host_vector[i*A.ld+j] = 0.0;
+              }
+            }
+          }
+          X.host_vector = B.host_vector;
+          test_trsm(A, X, side_left, lower, unit_diag, trans, 1.0);
+
+          std::cout << "X=" << std::endl;
+          X.print();
+
+          if (side_left) {
+            test_gemm(A, X, B_test, 1.0, 0.0, trans, false);
+          } else {
+            test_gemm(X, A, B_test, 1.0, 0.0, false, trans);
+          }
+          bool test = B_test == B;
+          if (!test) {
+            std::cout << "side_left=" << side_left << " lower=" << lower << " unit=" << unit_diag << " trans=" << trans << std::endl;
+          }
+          EXPECT_TRUE(test);
+        }
+      }
+    }
+  }
+}
+
+TEST_F(MatrixOp_Test, MatTrsmTest) {
+  // Numerical instability messes things up with 
+  // matrices that are any bigger than this
+  int m = 10;
+  int n = 12;
+  {
+    TestMatrix<double> A_raw(m,m,m);
+    for (auto side_left : {false,true}) {
+      for (auto lower : {false,true}) {
+        for (auto unit_diag : {false,true}) {
+          for (auto trans : {false,true}) {
+            int m_X = side_left ? m : n;
+            int n_X = side_left ? n : m;
+            TestMatrix<double> A(m,m,m);
+            TestMatrix<double> X(m_X,n_X,m_X);
+            TestMatrix<double> B(m_X,n_X,m_X);
+            A.host_vector = A_raw.host_vector;
+            X.host_vector = B.host_vector;
+            if (lower) {
+              for (int i=0; i<m; i++) {
+                for (int j=0; j<m; j++) {
+                  if (i > j) 
+                    A.host_vector[i*A.ld+j] = 0.0;
+                  if (unit_diag && i == j) 
+                    A.host_vector[i*A.ld+j] = 1.0;
+                }
+              }
+            } else {
+              for (int i=0; i<m; i++) {
+                for (int j=0; j<m; j++) {
+                  if (i < j) 
+                    A.host_vector[i*A.ld+j] = 0.0;
+                  if (unit_diag && i == j) 
+                    A.host_vector[i*A.ld+j] = 1.0;
+                }
+              }
+            }
+            A.upload();
+            B.upload();
+
+            std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+            std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+
+            MatrixTrs trs(std::move(Aop), std::move(Bop), side_left, lower, trans, unit_diag, 1.0);
+            ASSERT_EQ(trs.output_space_req(), 0);
+            trs.execute(handle, Workspace(), ManagedWorkspace(trs.scratch_space_req_bytes()));
+
+            B.download();
+
+            test_trsm(A, X, side_left, lower, unit_diag, trans, 1.0);
+
+            bool good = (B == X);
+            EXPECT_TRUE(good);
+
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST_F(MatrixOp_Test, MatSyrkTest) {
+  // Numerical instability messes things up with 
+  // matrices that are any bigger than this
+  int k = 56;
+  int n = 72;
+  {
+    for (auto lower : {false,true}) {
+      for (auto trans : {false,true}) {
+        size_t mA = trans ? k : n;
+        size_t nA = trans ? n : k;
+        TestMatrix<double> A(mA,nA,mA);
+        TestMatrix<double> C(n,n,n);
+        for (int i=0; i<n; i++) {
+          for (int j=0; j<n; j++) {
+            if (i < j) 
+              C.host_vector[i*C.ld+j] = C.host_vector[j*C.ld+i];
+          }
+        }
+        
+        A.upload();
+
+        test_gemm(A, A, C, 1.0, 0.0, trans, !trans);
+        C.upload();
+
+        std::unique_ptr<MatrixOp<double>> Aop = 
+          std::make_unique<NoOp<double>>(A);
+        std::unique_ptr<MatrixOp<double>> Cop = 
+          std::make_unique<NoOp<double>>(C);
+
+        MatrixSyrk<double> syrk(std::move(Aop), std::move(Cop), lower, trans, -1.0, 1.0);
+        ASSERT_EQ(syrk.output_space_req(), 0);
+        syrk.execute(handle, Workspace(), 
+            ManagedWorkspace(syrk.scratch_space_req_bytes()));
+
+        C.download();
+        // gpu syrk only acts on half the matrix, 
+        // need to manually zero out the other half
+        if (lower) {
+          for (int i=0; i<n; i++) {
+            for (int j=0; j<n; j++) {
+              if (i > j) 
+                C.host_vector[i*C.ld+j] = 0.0;
+            }
+          }
+        } else {
+          for (int i=0; i<n; i++) {
+            for (int j=0; j<n; j++) {
+              if (i < j) 
+                C.host_vector[i*C.ld+j] = 0.0;
+            }
+          }
+        }
+        EXPECT_TRUE(C.is_zero());
+      }
+    }
+  }
+}
+
 TEST_F(MatrixOp_Test, TNMulTest) {
   int m = 25;
   int k = 14;
   int n = 32;
 
-  TestMatrix A(k,m,k);
-  TestMatrix B(k,n,k);
-  TestMatrix C(m,n,m);
+  TestMatrix<double> A(k,m,k);
+  TestMatrix<double> B(k,n,k);
+  TestMatrix<double> C(m,n,m);
 
   // do the multiply
   {
-    std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
-    std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
-    std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
+    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
 
     Cop = 
-        std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop), 
+        std::make_unique<MatrixMult<double>>(std::move(Aop), std::move(Bop), std::move(Cop), 
                                      true, false, 2.0, 0.0);
 
-    Aop = std::make_unique<NoOp>(A);
-    Bop = std::make_unique<NoOp>(B);
+    Aop = std::make_unique<NoOp<double>>(A);
+    Bop = std::make_unique<NoOp<double>>(B);
 
-    Aop = std::make_unique<MatrixMove>(std::move(Aop), -2.0, true, 8);
+    Aop = std::make_unique<MatrixMove<double>>(std::move(Aop), -2.0, true, 8);
 
-    Cop = std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop),
+    Cop = std::make_unique<MatrixMult<double>>(std::move(Aop), std::move(Bop), std::move(Cop),
                     false, false, 1.0, 1.0);
 
 
     ASSERT_EQ(Cop->output_space_req(), 0);
-    ManagedWorkspace scratch(Cop->scratch_space_req());
+    ManagedWorkspace scratch(Cop->scratch_space_req_bytes());
     Cop->execute(handle, Workspace(), scratch);
     C.download();
   }
@@ -99,34 +269,66 @@ TEST_F(MatrixOp_Test, TTMulTest) {
   int k = 42;
   int n = 61;
   
-  TestMatrix A(k,m,k);
-  TestMatrix B(n,k,n);
-  TestMatrix C(m,n,m);
+  TestMatrix<double> A(k,m,k);
+  TestMatrix<double> B(n,k,n);
+  TestMatrix<double> C(m,n,m);
 
   // do the multiply
   {
-    std::unique_ptr<MatrixOp> Aop = std::make_unique<NoOp>(A);
-    std::unique_ptr<MatrixOp> Bop = std::make_unique<NoOp>(B);
-    std::unique_ptr<MatrixOp> Cop = std::make_unique<NoOp>(C);
+    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
 
     Cop = 
-        std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop), 
+        std::make_unique<MatrixMult<double>>(std::move(Aop), std::move(Bop), std::move(Cop), 
                                      true, true, 2.0, 0.0);
 
-    Aop = std::make_unique<NoOp>(A);
-    Bop = std::make_unique<NoOp>(B);
+    Aop = std::make_unique<NoOp<double>>(A);
+    Bop = std::make_unique<NoOp<double>>(B);
 
-    Aop = std::make_unique<MatrixMove>(std::move(Aop), 0.5, true, 16);
-    Bop = std::make_unique<MatrixMove>(std::move(Bop), -4.0, true, 8);
+    Aop = std::make_unique<MatrixMove<double>>(std::move(Aop), 0.5, true, 16);
+    Bop = std::make_unique<MatrixMove<double>>(std::move(Bop), -4.0, true, 8);
 
-    Cop = std::make_unique<MatrixMult>(std::move(Aop), std::move(Bop), std::move(Cop),
+    Cop = std::make_unique<MatrixMult<double>>(std::move(Aop), std::move(Bop), std::move(Cop),
                     false, false, 1.0, 1.0);
 
     ASSERT_EQ(Cop->output_space_req(), 0);
-    ManagedWorkspace scratch(Cop->scratch_space_req());
+    ManagedWorkspace scratch(Cop->scratch_space_req_bytes());
     Cop->execute(handle, Workspace(), scratch);
     C.download();
   }
 
   ASSERT_TRUE(C.is_zero());
 }
+
+//TEST_F(MatrixOp_Test, TiledMatMulTest) {
+//  int m = 1024;
+//  int k = 1024;
+//  int n = 1024;
+//
+//  TestMatrix<double> A(m,k,m);
+//  TestMatrix<double> B(k,n,k);
+//  TestMatrix<double> C(m,n,m);
+//
+//  {
+//    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+//    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+//    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
+//
+//    TiledMatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), 
+//                         false, false, 1.0, 0.0, 128, 128, 128);
+//    ASSERT_EQ(mult.output_space_req(), 0);
+//    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req_bytes()));
+//  }
+//  {
+//    std::unique_ptr<MatrixOp<double>> Aop = std::make_unique<NoOp<double>>(A);
+//    std::unique_ptr<MatrixOp<double>> Bop = std::make_unique<NoOp<double>>(B);
+//    std::unique_ptr<MatrixOp<double>> Cop = std::make_unique<NoOp<double>>(C);
+//
+//    MatrixMult mult(std::move(Aop), std::move(Bop), std::move(Cop), false, false, -1.0, 1.0);
+//    mult.execute(handle, Workspace(), ManagedWorkspace(mult.scratch_space_req_bytes()));
+//  }
+//
+//  C.download();
+//  ASSERT_TRUE(C.is_zero());
+//}
