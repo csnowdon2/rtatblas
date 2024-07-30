@@ -53,6 +53,8 @@ protected:
 
   size_t tests_until_converge = 1;
   std::map<Key, Opts> converged_plans;
+
+  Device_Timer::Mode sync_mode = Device_Timer::ASYNCHRONOUS;
 public:
   Planning_System() = default;
   Planning_System(Option_Filter<Key, Opts> opt_filter) 
@@ -93,13 +95,19 @@ public:
     return converged_plans[key];
   }
 
+  void set_sync_mode(Device_Timer::Mode new_sync_mode) {
+    sync_mode = new_sync_mode;
+  }
+
   void execute(Params params, Opts opts, Workspace space, Stream s) {
     if (space.size<char>() < executor.calculate_workspace(params, opts)) {
       opts = degrade_plan(params, opts, space);
     }
 
-    auto sync = Device_Timer::ASYNCHRONOUS;
-    if (executor.get_timings(params)[opts].size() < tests_until_converge)
+    auto sync = sync_mode;
+    // Prevent asynchronous execution before convergence
+    if (executor.get_timings(params)[opts].size() < tests_until_converge
+        && sync == Device_Timer::ASYNCHRONOUS)
       sync = Device_Timer::SEMI_SYNCHRONOUS;
 
     executor.execute(params, opts, space, s, sync);
