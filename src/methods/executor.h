@@ -28,7 +28,8 @@ public:
       internal_execute(params, opts, space, str);
     }, s, sync);
 
-    timer_log[params][opts].append(timer);
+    if (timer_log[params][opts].size() < log_size_limit)
+      timer_log[params][opts].append(timer);
   }
 
 
@@ -53,6 +54,7 @@ protected:
   virtual void warmup(Params, Opts, Stream) = 0;
 
   std::map<Key, std::map<Opts, Timer_Bank>> timer_log;  
+  const size_t log_size_limit = 100;
   bool warm = false;
 };
 
