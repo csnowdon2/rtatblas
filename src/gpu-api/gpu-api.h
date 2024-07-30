@@ -44,7 +44,7 @@
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
 #define cublasCreate hipblasCreate
 #define cublasDestroy hipblasDestroy
-#define CUBLAS_STATUS_SUCCESS HIP_SUCCESS
+#define CUBLAS_STATUS_SUCCESS HIPBLAS_STATUS_SUCCESS
 #define cublasDgeam hipblasDgeam
 #define cublasDgemm hipblasDgemm
 #define cublasDtrsm hipblasDtrsm
