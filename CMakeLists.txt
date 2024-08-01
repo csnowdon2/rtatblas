@@ -33,7 +33,13 @@ if  (NOT nlohmann_json_FOUND)
   FetchContent_MakeAvailable(json)
 endif()
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -Wpedantic -Werror")
+# Check if the project is being added as a submodule
+if (NOT ${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+  #inherit the cmake cxx flags from the parent project
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ")
+else()
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -Wpedantic -Werror")
+endif()
 
 add_subdirectory(src)
 enable_testing()
