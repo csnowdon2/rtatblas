@@ -108,8 +108,8 @@ std::unique_ptr<MatrixOp<T>> GEMM_Options_Pad::form_operation(GEMM_Inputs<T> par
   if (tc) {
     auto scratch = std::make_unique<MatrixMultAlloc<T>>(
         std::move(B), std::move(A), 
-        params.transb != CUBLAS_OP_T, 
-        params.transa != CUBLAS_OP_T, 
+        params.transb != gpu::BLAS_OP_T, 
+        params.transa != gpu::BLAS_OP_T, 
         params.alpha, pc ? 32 : 1);
 
     return std::make_unique<MatrixAccumulate<T>>(
@@ -118,8 +118,8 @@ std::unique_ptr<MatrixOp<T>> GEMM_Options_Pad::form_operation(GEMM_Inputs<T> par
   } else if (pc) {
     auto scratch = std::make_unique<MatrixMultAlloc<T>>(
         std::move(A), std::move(B),
-        params.transa == CUBLAS_OP_T, 
-        params.transb == CUBLAS_OP_T, 
+        params.transa == gpu::BLAS_OP_T, 
+        params.transb == gpu::BLAS_OP_T, 
         params.alpha, 32);
 
     return std::make_unique<MatrixAccumulate<T>>(
@@ -128,7 +128,7 @@ std::unique_ptr<MatrixOp<T>> GEMM_Options_Pad::form_operation(GEMM_Inputs<T> par
   } else {
     return std::make_unique<MatrixMult<T>>(
         std::move(A), std::move(B), std::move(C), 
-        params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
+        params.transa == gpu::BLAS_OP_T, params.transb == gpu::BLAS_OP_T,
         params.alpha, params.beta);
   }
 }
@@ -205,8 +205,8 @@ std::unique_ptr<MatrixOp<T>> GEMM_Options::form_operation(GEMM_Inputs<T> params)
   if (tc) {
     auto scratch = std::make_unique<MatrixMultAlloc<T>>(
         std::move(B), std::move(A), 
-        params.transb != CUBLAS_OP_T, 
-        params.transa != CUBLAS_OP_T, 
+        params.transb != gpu::BLAS_OP_T, 
+        params.transa != gpu::BLAS_OP_T, 
         params.alpha, 1);
 
     return std::make_unique<MatrixAccumulate<T>>(
@@ -215,7 +215,7 @@ std::unique_ptr<MatrixOp<T>> GEMM_Options::form_operation(GEMM_Inputs<T> params)
   }  else {
     return std::make_unique<MatrixMult<T>>(
         std::move(A), std::move(B), std::move(C), 
-        params.transa == CUBLAS_OP_T, params.transb == CUBLAS_OP_T,
+        params.transa == gpu::BLAS_OP_T, params.transb == gpu::BLAS_OP_T,
         params.alpha, params.beta);
   }
 }

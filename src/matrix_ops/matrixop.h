@@ -13,7 +13,7 @@ namespace rtat {
 // context.
 
 template<typename T>
-inline cublasStatus_t gpuTgemm(cublasHandle_t handle, 
+inline gpu::blasStatus_t gpuTgemm(gpu::blasHandle_t handle, 
                                bool transa, bool transb,
                                Matrix<T> A, Matrix<T> B, Matrix<T> C,
                                const T alpha, const T beta) {
@@ -21,9 +21,9 @@ inline cublasStatus_t gpuTgemm(cublasHandle_t handle,
   int n = C.dims().n;
   int k = transa ? A.dims().m : A.dims().n;
   if constexpr(std::is_same_v<T,double>) {
-    return cublasDgemm(handle,
-                transa ? CUBLAS_OP_T : CUBLAS_OP_N,
-                transb ? CUBLAS_OP_T : CUBLAS_OP_N,
+    return gpu::blasDgemm(handle,
+                transa ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
+                transb ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
                 m, n, k,
                 &alpha,
                 A.ptr(), A.dims().ld,
@@ -31,9 +31,9 @@ inline cublasStatus_t gpuTgemm(cublasHandle_t handle,
                 &beta,
                 C.ptr(), C.dims().ld);
   } else if constexpr(std::is_same_v<T,float>) {
-    return cublasSgemm(handle,
-                transa ? CUBLAS_OP_T : CUBLAS_OP_N,
-                transb ? CUBLAS_OP_T : CUBLAS_OP_N,
+    return gpu::blasSgemm(handle,
+                transa ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
+                transb ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
                 m, n, k,
                 &alpha,
                 A.ptr(), A.dims().ld,
@@ -46,25 +46,25 @@ inline cublasStatus_t gpuTgemm(cublasHandle_t handle,
 }
 
 template<typename T>
-inline cublasStatus_t gpuTsyrk(cublasHandle_t handle, 
+inline gpu::blasStatus_t gpuTsyrk(gpu::blasHandle_t handle, 
                                bool lower, bool trans,
                                Matrix<T> A, Matrix<T> C,
                                const T alpha, const T beta) {
   int n = C.dims().n;
   int k = trans ? A.dims().m : A.dims().n;
   if constexpr(std::is_same_v<T,double>) {
-    return cublasDsyrk(handle,
-                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
+    return gpu::blasDsyrk(handle,
+                lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+                trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
                 n, k, 
                 &alpha,
                 A.ptr(), A.dims().ld,
                 &beta,
                 C.ptr(), C.dims().ld);
   } else if constexpr(std::is_same_v<T,float>) {
-    return cublasSsyrk(handle,
-                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
+    return gpu::blasSsyrk(handle,
+                lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+                trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
                 n, k, 
                 &alpha,
                 A.ptr(), A.dims().ld,
@@ -76,7 +76,7 @@ inline cublasStatus_t gpuTsyrk(cublasHandle_t handle,
 }
 
 template<typename T>
-inline cublasStatus_t gpuTtrsm(cublasHandle_t handle, 
+inline gpu::blasStatus_t gpuTtrsm(gpu::blasHandle_t handle, 
                                bool side_left, bool lower, 
                                bool trans, bool unit_diag,
                                Matrix<T> A, Matrix<T> B, 
@@ -84,21 +84,21 @@ inline cublasStatus_t gpuTtrsm(cublasHandle_t handle,
   int m = B.dims().m;
   int n = B.dims().n;
   if constexpr(std::is_same_v<T,double>) {
-    return cublasDtrsm(handle,
-                side_left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT,
-                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
-                unit_diag ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT,
+    return gpu::blasDtrsm(handle,
+                side_left ? gpu::BLAS_SIDE_LEFT : gpu::BLAS_SIDE_RIGHT,
+                lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+                trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
+                unit_diag ? gpu::BLAS_DIAG_UNIT : gpu::BLAS_DIAG_NON_UNIT,
                 m, n,
                 &alpha,
                 A.ptr(), A.dims().ld,
                 B.ptr(), B.dims().ld);
   } else if constexpr(std::is_same_v<T,float>) {
-    return cublasStrsm(handle,
-                side_left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT,
-                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-                trans ? CUBLAS_OP_T : CUBLAS_OP_N,
-                unit_diag ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT,
+    return gpu::blasStrsm(handle,
+                side_left ? gpu::BLAS_SIDE_LEFT : gpu::BLAS_SIDE_RIGHT,
+                lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+                trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
+                unit_diag ? gpu::BLAS_DIAG_UNIT : gpu::BLAS_DIAG_NON_UNIT,
                 m, n,
                 &alpha,
                 A.ptr(), A.dims().ld,
@@ -109,15 +109,15 @@ inline cublasStatus_t gpuTtrsm(cublasHandle_t handle,
 }
 
 template<typename T>
-inline cublasStatus_t gpuTgeam(cublasHandle_t handle, 
+inline gpu::blasStatus_t gpuTgeam(gpu::blasHandle_t handle, 
                                bool transa, bool transb,
                                Matrix<T> A, Matrix<T> B, Matrix<T> C,
                                const T alpha, 
                                const T beta) {
   if constexpr(std::is_same_v<T,double>) {
-    return cublasDgeam(handle,
-                transa ? CUBLAS_OP_T : CUBLAS_OP_N, 
-                transb ? CUBLAS_OP_T : CUBLAS_OP_N, 
+    return gpu::blasDgeam(handle,
+                transa ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
+                transb ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
                 B.dims().m, B.dims().n,
                 &alpha,
                 A.ptr(), A.dims().ld,
@@ -125,9 +125,9 @@ inline cublasStatus_t gpuTgeam(cublasHandle_t handle,
                 B.ptr(), B.dims().ld,
                 C.ptr(), C.dims().ld);
   } else if constexpr(std::is_same_v<T,float>) {
-    return cublasSgeam(handle,
-                transa ? CUBLAS_OP_T : CUBLAS_OP_N, 
-                transb ? CUBLAS_OP_T : CUBLAS_OP_N, 
+    return gpu::blasSgeam(handle,
+                transa ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
+                transb ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
                 B.dims().m, B.dims().n,
                 &alpha,
                 A.ptr(), A.dims().ld,
@@ -157,7 +157,7 @@ public:
 
   virtual ~MatrixOp() = default;
 
-  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) = 0;
+  virtual Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) = 0;
   virtual size_t output_space_req()  const = 0;
   virtual MatrixDims dims() const = 0;
 
@@ -189,7 +189,7 @@ public:
   }
 
 
-  std::vector<Matrix<T>> compute_operands(cublasHandle_t handle,
+  std::vector<Matrix<T>> compute_operands(gpu::blasHandle_t handle,
                                        Workspace out_space, Workspace scratch_space) {
     // TODO compute operands in decreasing order of space requirements
     std::vector<Matrix<T>> output;
@@ -209,7 +209,7 @@ public:
     return output;
   }
 
-  std::vector<Matrix<T>> compute_operands(cublasHandle_t handle, Workspace scratch_space) {
+  std::vector<Matrix<T>> compute_operands(gpu::blasHandle_t handle, Workspace scratch_space) {
     return compute_operands(handle, Workspace(), scratch_space);
   }
 };
@@ -220,7 +220,7 @@ class NoOp : public MatrixOp<T> {
 public:
   NoOp(Matrix<T> A) : MatrixOp<T>({}), A(A) {}
 
-  Matrix<T> execute([[maybe_unused]] cublasHandle_t handle, [[maybe_unused]] Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
+  Matrix<T> execute([[maybe_unused]] gpu::blasHandle_t handle, [[maybe_unused]] Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
     return A;
   }
 
@@ -248,7 +248,7 @@ public:
     return MatrixDims(m,n,ld);
   }
 
-  Matrix<T> execute([[maybe_unused]] cublasHandle_t handle, Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
+  Matrix<T> execute([[maybe_unused]] gpu::blasHandle_t handle, Workspace out_space, [[maybe_unused]] Workspace scratch_space) override {
     return Matrix<T>(out_space, dims());
   }
 };
@@ -288,10 +288,10 @@ public:
 
   MatrixDims dims() const override { return this->operands[1]->dims(); }
 
-  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
     if (out_space.size<T>() < output_space_req() || 
         scratch_space.size<T>() < this->scratch_space_req()) {
-      std::cout << "ACCUMULATE NOT ENOUGH SPACE" << std::endl;
+      std::cout << "ACgpu::MULATE NOT ENOUGH SPACE" << std::endl;
       throw "Not enough space";
     }
 
@@ -326,7 +326,7 @@ public:
     return MatrixDims(m,n,ld);
   };
 
-  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
     if (out_space.size<T>() < output_space_req() || 
         scratch_space.size<T>() < this->scratch_space_req()) {
       std::cout << "MATRIX MOVE NOT ENOUGH SPACE" << std::endl;
@@ -380,7 +380,7 @@ public:
 
   size_t output_space_req() const override {return 0;}
 
-  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  virtual Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
@@ -425,7 +425,7 @@ public:
 
   size_t output_space_req() const override {return dims().footprint();}
 
-  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
     Matrix<T> &A = matrices[0];
@@ -472,7 +472,7 @@ public:
 
   size_t output_space_req() const override {return 0;}
 
-  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  virtual Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
@@ -520,7 +520,7 @@ public:
 
   size_t output_space_req() const override {return dims().footprint();}
 
-  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  virtual Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
@@ -564,7 +564,7 @@ public:
 
   size_t output_space_req() const override {return 0;}
 
-  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  virtual Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
@@ -601,7 +601,7 @@ public:
 
   size_t output_space_req() const override {return dims().footprint();}
 
-  virtual Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  virtual Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
 
@@ -650,10 +650,10 @@ public:
 // 
 //   size_t output_space_req() const override {return 0;}
 // 
-//   Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+//   Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 // 
-//     auto opA = transa ? CUBLAS_OP_T : CUBLAS_OP_N;
-//     auto opB = transb ? CUBLAS_OP_T : CUBLAS_OP_N;
+//     auto opA = transa ? gpu::BLAS_OP_T : gpu::BLAS_OP_N;
+//     auto opB = transb ? gpu::BLAS_OP_T : gpu::BLAS_OP_N;
 //     auto matrices = compute_operands(handle, out_space, scratch_space);
 // 
 //     Matrix<T> &A = matrices[0];
@@ -677,7 +677,7 @@ public:
 //       Cblocks.push_back(&C.ptr()[i]);
 //     }
 // 
-//     cublasDgemmBatched(handle, opA, opB,
+//     gpu::blasDgemmBatched(handle, opA, opB,
 //                        mblock, n, k,
 //                        &alpha,
 //                        Ablocks.data(), A.dims().ld,
@@ -699,7 +699,7 @@ public:
         : MatrixMult<T>(std::move(Aop), std::move(Bop), std::move(Cop), transa, transb, alpha, beta),
           mblock(mblock), nblock(nblock), kblock(kblock) {}
 
-  Matrix<T> execute(cublasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
+  Matrix<T> execute(gpu::blasHandle_t handle, Workspace out_space, Workspace scratch_space) override {
 
     auto matrices = this->compute_operands(handle, out_space, scratch_space);
 

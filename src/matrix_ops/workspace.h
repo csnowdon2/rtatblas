@@ -49,17 +49,17 @@ public:
 class ManagedWorkspace : public Workspace {
 public:
   ManagedWorkspace(size_t bytes) : Workspace() {
-    gpuAssert(cudaMalloc(&ptr, bytes));
+    gpuAssert(gpu::Malloc(&ptr, bytes));
     count = bytes;
   }
-  ~ManagedWorkspace() { gpuAssert(cudaFree(ptr)); }
+  ~ManagedWorkspace() { gpuAssert(gpu::Free(ptr)); }
 
   template<typename T>
   void grow_to_fit(size_t new_count) {
     if (size<T>() < new_count) {
-      gpuAssert(cudaDeviceSynchronize());
-      gpuAssert(cudaFree(ptr));
-      gpuAssert(cudaMalloc(&ptr, new_count*sizeof(T)));
+      gpuAssert(gpu::DeviceSynchronize());
+      gpuAssert(gpu::Free(ptr));
+      gpuAssert(gpu::Malloc(&ptr, new_count*sizeof(T)));
       count = new_count*sizeof(T);
     }
   }

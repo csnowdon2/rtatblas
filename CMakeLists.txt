@@ -6,6 +6,7 @@ set (CMAKE_CXX_STANDARD 17)
 project(RTATBLAS)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+add_library(rtatblas INTERFACE)
 
 # GPU libraries
 find_package(CUDAToolkit)
@@ -16,10 +17,10 @@ if (NOT CUDAToolkit_FOUND)
   find_package(hiprand REQUIRED)
   find_package(rocBLAS REQUIRED)
   set(GPU_LIBRARIES hip::host roc::rocblas roc::hipblas hip::hiprand)
-  add_definitions(-DHIP)
+  add_definitions(-D_RTAT_HIP)
 else()
   set(GPU_LIBRARIES CUDA::cudart CUDA::cublas CUDA::curand)
-  add_definitions(-DCUDA)
+  add_definitions(-D_RTAT_CUDA)
 endif()
 message("GPU LIBS " ${GPU_LIBRARIES})
 

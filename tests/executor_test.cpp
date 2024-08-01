@@ -24,7 +24,7 @@ TEST_F(GEMM_Executor_Test, Correctness_Double) {
     TestMatrix<double> A(m,k,m);
     TestMatrix<double> B(k,n,k);
     TestMatrix<double> C(m,n,m);
-    GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+    GEMM_Inputs<double> inputs(handle, gpu::BLAS_OP_N, gpu::BLAS_OP_N, A, B, C, alpha, 0.0);
 
     size_t ws = exec.calculate_workspace(inputs, opts);
     ManagedWorkspace space(ws);
@@ -40,7 +40,7 @@ TEST_F(GEMM_Executor_Test, Correctness_Double) {
     TestMatrix<double> A(m,k,m);
     TestMatrix<double> B(n,k,n);
     TestMatrix<double> C(m,n,m);
-    GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_T, A, B, C, alpha, 0.0);
+    GEMM_Inputs<double> inputs(handle, gpu::BLAS_OP_N, gpu::BLAS_OP_T, A, B, C, alpha, 0.0);
 
     size_t ws = exec.calculate_workspace(inputs, opts);
     ManagedWorkspace space(ws);
@@ -56,7 +56,7 @@ TEST_F(GEMM_Executor_Test, Correctness_Double) {
     TestMatrix<double> A(k,m,k);
     TestMatrix<double> B(k,n,k);
     TestMatrix<double> C(m,n,m);
-    GEMM_Inputs<double> inputs(handle, CUBLAS_OP_T, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+    GEMM_Inputs<double> inputs(handle, gpu::BLAS_OP_T, gpu::BLAS_OP_N, A, B, C, alpha, 0.0);
 
     size_t ws = exec.calculate_workspace(inputs, opts);
     ManagedWorkspace space(ws);
@@ -72,7 +72,7 @@ TEST_F(GEMM_Executor_Test, Correctness_Double) {
     TestMatrix<double> A(k,m,k);
     TestMatrix<double> B(n,k,n);
     TestMatrix<double> C(m,n,m);
-    GEMM_Inputs<double> inputs(handle, CUBLAS_OP_T, CUBLAS_OP_T, A, B, C, alpha, 0.0);
+    GEMM_Inputs<double> inputs(handle, gpu::BLAS_OP_T, gpu::BLAS_OP_T, A, B, C, alpha, 0.0);
 
     size_t ws = exec.calculate_workspace(inputs, opts);
     ManagedWorkspace space(ws);
@@ -111,8 +111,8 @@ TEST_F(GEMM_Executor_Test, Correctness_Single) {
         TestMatrix<float> C(m,n,m);
 
         GEMM_Inputs<float> inputs(handle, 
-            transa ? CUBLAS_OP_T : CUBLAS_OP_N, 
-            transb ? CUBLAS_OP_T : CUBLAS_OP_N, 
+            transa ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
+            transb ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
             A, B, C, alpha, 0.0);
 
         size_t ws = exec.calculate_workspace(inputs, opts);
@@ -182,13 +182,13 @@ TEST_F(TRSM_Executor_Test, TRSM_Correctness_Double) {
             // B := AX
             if (side_left) {
               GEMM_Inputs<double> inputs(handle, 
-                  trans ? CUBLAS_OP_T : CUBLAS_OP_N, CUBLAS_OP_N, 
+                  trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, gpu::BLAS_OP_N, 
                   A, X, B, 1.0, 0.0);
               gemm_exec.execute(
                   inputs, GEMM_Options(), Workspace(), s);
             } else {
               GEMM_Inputs<double> inputs(handle, 
-                  CUBLAS_OP_N, trans ? CUBLAS_OP_T : CUBLAS_OP_N, 
+                  gpu::BLAS_OP_N, trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
                   X, A, B, 1.0, 0.0);
               gemm_exec.execute(
                   inputs, GEMM_Options(), Workspace(), s);
@@ -197,10 +197,10 @@ TEST_F(TRSM_Executor_Test, TRSM_Correctness_Double) {
             // Solve AX := B
             {
               TRSM_Inputs<double> inputs(handle, 
-                side_left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT, 
-                lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-                trans ? CUBLAS_OP_T : CUBLAS_OP_N, 
-                unit_diag ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT, 
+                side_left ? gpu::BLAS_SIDE_LEFT : gpu::BLAS_SIDE_RIGHT, 
+                lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+                trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
+                unit_diag ? gpu::BLAS_DIAG_UNIT : gpu::BLAS_DIAG_NON_UNIT, 
                 A, B, 1.0);
 
               size_t ws = 
@@ -251,8 +251,8 @@ TEST_F(SYRK_Executor_Test, SYRK_Correctness_Double) {
         // C := op(A)op(A)^T
         {
           GEMM_Inputs<double> inputs(handle, 
-              trans ? CUBLAS_OP_T : CUBLAS_OP_N, 
-              trans ? CUBLAS_OP_N : CUBLAS_OP_T, 
+              trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
+              trans ? gpu::BLAS_OP_N : gpu::BLAS_OP_T, 
               A, A, C, 1.0, 0.0);
           gemm_exec.execute(
               inputs, GEMM_Options(), Workspace(), s);
@@ -261,8 +261,8 @@ TEST_F(SYRK_Executor_Test, SYRK_Correctness_Double) {
         // C := C - op(A)op(A)^T
         {
           SYRK_Inputs<double> inputs(handle, 
-            lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-            trans ? CUBLAS_OP_T : CUBLAS_OP_N, 
+            lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+            trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N, 
             A, C, -1.0, 1.0);
 
           size_t ws = 

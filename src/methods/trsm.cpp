@@ -89,10 +89,10 @@ std::unique_ptr<MatrixOp<T>> TRSM_Options::form_operation(TRSM_Inputs<T> params)
       std::make_unique<MatrixMove<T>>(std::move(B), 1.0, true, 1);
     scratch = std::make_unique<MatrixTrsAlloc<T>>(
         std::move(A), std::move(scratch), 
-        params.side == CUBLAS_SIDE_LEFT,
-        params.uplo == CUBLAS_FILL_MODE_LOWER,
-        params.trans == CUBLAS_OP_T,
-        params.diag == CUBLAS_DIAG_UNIT,
+        params.side == gpu::BLAS_SIDE_LEFT,
+        params.uplo == gpu::BLAS_FILL_MODE_LOWER,
+        params.trans == gpu::BLAS_OP_T,
+        params.diag == gpu::BLAS_DIAG_UNIT,
         params.alpha);
 
     B = std::make_unique<NoOp<T>>(params.B);
@@ -102,10 +102,10 @@ std::unique_ptr<MatrixOp<T>> TRSM_Options::form_operation(TRSM_Inputs<T> params)
   } else {
     return std::make_unique<MatrixTrs<T>>(
         std::move(A), std::move(B), 
-        params.side == CUBLAS_SIDE_LEFT,
-        params.uplo == CUBLAS_FILL_MODE_LOWER,
-        params.trans == CUBLAS_OP_T,
-        params.diag == CUBLAS_DIAG_UNIT,
+        params.side == gpu::BLAS_SIDE_LEFT,
+        params.uplo == gpu::BLAS_FILL_MODE_LOWER,
+        params.trans == gpu::BLAS_OP_T,
+        params.diag == gpu::BLAS_DIAG_UNIT,
         params.alpha);
   }
 }

@@ -8,7 +8,7 @@ template<typename T>
 class Dummy_Op : public MatrixOp<T> {
 public:
   Dummy_Op() : MatrixOp<T>({}) {}
-  Matrix<T> execute(cublasHandle_t, Workspace, Workspace) override {
+  Matrix<T> execute(gpu::blasHandle_t, Workspace, Workspace) override {
     return Matrix<T>();
   }
 
@@ -18,9 +18,9 @@ public:
 
 
 struct Dummy_Params {
-  cublasHandle_t handle;
+  gpu::blasHandle_t handle;
   int i;
-  Dummy_Params(cublasHandle_t handle, int i) 
+  Dummy_Params(gpu::blasHandle_t handle, int i) 
     : handle(handle), i(i) {}
 };
 
@@ -96,7 +96,7 @@ TEST_F(Planning_Test, GEMM_Correctness) {
 
   double alpha = 1.0;
 
-  GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+  GEMM_Inputs<double> inputs(handle, gpu::BLAS_OP_N, gpu::BLAS_OP_N, A, B, C, alpha, 0.0);
 
   for (int i=0; i<10; i++) {
     for (auto &plan : GEMM_Options::enumerate()) {
@@ -127,7 +127,7 @@ TEST_F(Planning_Test, Hello) {
 
   double alpha = 1.0;
 
-  GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+  GEMM_Inputs<double> inputs(handle, gpu::BLAS_OP_N, gpu::BLAS_OP_N, A, B, C, alpha, 0.0);
 
   ManagedWorkspace space(1024);
   for (int j=0; j<2; j++) {
@@ -140,7 +140,7 @@ TEST_F(Planning_Test, Hello) {
 
       planner.execute(inputs, plan, space, s);
     }
-    gpuAssert(cudaDeviceSynchronize());
+    gpuAssert(gpu::DeviceSynchronize());
     //planner.dump_analytics();
   }
 }
@@ -158,7 +158,7 @@ TEST_F(Planning_Test, Plan_Degradation) {
   TestMatrix<double> C(m,n,m);
 
   double alpha = 1.0;
-  GEMM_Inputs<double> inputs(handle, CUBLAS_OP_N, CUBLAS_OP_N, A, B, C, alpha, 0.0);
+  GEMM_Inputs<double> inputs(handle, gpu::BLAS_OP_N, gpu::BLAS_OP_N, A, B, C, alpha, 0.0);
 
   for (auto &plan : GEMM_Options::enumerate()) {
     planner.execute(inputs, plan, Workspace(), s);

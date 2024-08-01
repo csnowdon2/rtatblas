@@ -20,7 +20,7 @@ public:
       end(std::make_unique<Event>())
   {
     if (mode == SEMI_SYNCHRONOUS || mode == SYNCHRONOUS)
-      gpuAssert(cudaDeviceSynchronize());
+      gpuAssert(gpu::DeviceSynchronize());
 
     start->record(s);
     f(s);

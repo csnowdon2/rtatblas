@@ -142,16 +142,16 @@ private:
   ManagedWorkspace space;
   Device_RNG rng;
 public:
-  cublasHandle_t handle;
+  gpu::blasHandle_t handle;
   ManagedWorkspace scratch_space;
 
   Device_Resources() : s(), space(1024), rng(s), scratch_space(1024){
-    cublasCreate(&handle);
-    cublasSetStream(handle,s);
+    gpu::blasCreate(&handle);
+    gpu::blasSetStream(handle,s);
   }
 
   ~Device_Resources() {
-    cublasDestroy(handle);
+    gpu::blasDestroy(handle);
   }
 
   void sync() {s.synchronize();}
@@ -231,12 +231,12 @@ public:
 
   template<typename T>
   GEMM_Inputs<T> form_input(GEMM_Key key) {
-    MatrixDims Adims(key.transa == CUBLAS_OP_N ? key.m : key.k,
-                     key.transa == CUBLAS_OP_N ? key.k : key.m,
-                     key.transa == CUBLAS_OP_N ? key.m : key.k);
-    MatrixDims Bdims(key.transb == CUBLAS_OP_N ? key.k : key.n,
-                     key.transb == CUBLAS_OP_N ? key.n : key.k,
-                     key.transb == CUBLAS_OP_N ? key.k : key.n);
+    MatrixDims Adims(key.transa == gpu::BLAS_OP_N ? key.m : key.k,
+                     key.transa == gpu::BLAS_OP_N ? key.k : key.m,
+                     key.transa == gpu::BLAS_OP_N ? key.m : key.k);
+    MatrixDims Bdims(key.transb == gpu::BLAS_OP_N ? key.k : key.n,
+                     key.transb == gpu::BLAS_OP_N ? key.n : key.k,
+                     key.transb == gpu::BLAS_OP_N ? key.k : key.n);
     MatrixDims Cdims(key.m, key.n, key.m);
 
     auto matrices = 
@@ -249,7 +249,7 @@ public:
 
   template<typename T>
   TRSM_Inputs<T> form_input(TRSM_Key key) {
-    size_t mA = key.side == CUBLAS_SIDE_LEFT ? key.m : key.n;
+    size_t mA = key.side == gpu::BLAS_SIDE_LEFT ? key.m : key.n;
     MatrixDims Adims(mA,mA,mA);
     MatrixDims Bdims(key.m, key.n, key.m);
 
@@ -263,9 +263,9 @@ public:
 
   template<typename T>
   SYRK_Inputs<T> form_input(SYRK_Key key) {
-    MatrixDims Adims(key.trans == CUBLAS_OP_N ? key.n : key.k,
-                     key.trans == CUBLAS_OP_N ? key.k : key.n,
-                     key.trans == CUBLAS_OP_N ? key.n : key.k);
+    MatrixDims Adims(key.trans == gpu::BLAS_OP_N ? key.n : key.k,
+                     key.trans == gpu::BLAS_OP_N ? key.k : key.n,
+                     key.trans == gpu::BLAS_OP_N ? key.n : key.k);
     MatrixDims Cdims(key.n, key.n, key.n);
 
     auto matrices = 

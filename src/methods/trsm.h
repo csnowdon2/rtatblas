@@ -11,7 +11,7 @@ template<typename T>
 struct TRSM_Inputs {
   using Scalar = T;
 
-  cublasHandle_t handle;
+  gpu::blasHandle_t handle;
   BLAS_Side side;
   BLAS_Fill_Mode uplo;
   BLAS_Operation trans; 
@@ -20,7 +20,7 @@ struct TRSM_Inputs {
         Matrix<T> B;
   const T alpha; 
 
-  TRSM_Inputs(cublasHandle_t handle, BLAS_Side side, 
+  TRSM_Inputs(gpu::blasHandle_t handle, BLAS_Side side, 
               BLAS_Fill_Mode uplo, BLAS_Operation trans, 
               BLAS_Diag diag, 
               const Matrix<T> A, Matrix<T> B, T alpha)
@@ -89,27 +89,27 @@ protected:
               [[maybe_unused]] Stream s) override {
     size_t n = 128;
     double *A, *B;
-    gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&A, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&B, n*n*sizeof(double)));
 
     for (auto side_left : {false,true}) {
       for (auto lower : {false,true}) {
         for (auto trans : {false,true}) {
           double alpha = 1.0;
           double beta = 0.0;
-          cublasDtrsm(params.handle, 
-              side_left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT,
-              lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-              trans ? CUBLAS_OP_T : CUBLAS_OP_N,
-              CUBLAS_DIAG_NON_UNIT,
+          gpu::blasDtrsm(params.handle, 
+              side_left ? gpu::BLAS_SIDE_LEFT : gpu::BLAS_SIDE_RIGHT,
+              lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+              trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
+              gpu::BLAS_DIAG_NON_UNIT,
               n,n,&alpha,A,n,B,n);
-          cublasDgeam(params.handle, CUBLAS_OP_N, CUBLAS_OP_T, n,n, &alpha, A, n, &beta, B, n, A, n);
+          gpu::blasDgeam(params.handle, gpu::BLAS_OP_N, gpu::BLAS_OP_T, n,n, &alpha, A, n, &beta, B, n, A, n);
         }
       }
     }
-    gpuAssert(cudaDeviceSynchronize());
-    gpuAssert(cudaFree(A));
-    gpuAssert(cudaFree(B));
+    gpuAssert(gpu::DeviceSynchronize());
+    gpuAssert(gpu::Free(A));
+    gpuAssert(gpu::Free(B));
   }
 };
 

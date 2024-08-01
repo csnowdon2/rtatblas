@@ -1,9 +1,9 @@
 #pragma once
-#ifdef CUDA
+#if defined(_RTAT_CUDA)
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <curand.h>
-#else
+#elif defined(_RTAT_HIP)
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
@@ -15,72 +15,6 @@
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
-#define cudaMemGetInfo hipMemGetInfo
-#define cudaEventCreate hipEventCreate
-#define cudaEventDestroy hipEventDestroy
-#define cudaEventElapsedTime hipEventElapsedTime
-#define cudaEventQuery hipEventQuery
-#define cudaEventRecord hipEventRecord
-#define cudaEventSynchronize hipEventSynchronize
-#define cudaEvent_t hipEvent_t
-#define cudaStreamCreate hipStreamCreate
-#define cudaStreamDestroy hipStreamDestroy
-#define cudaStreamSynchronize hipStreamSynchronize
-#define cudaStream_t hipStream_t
-#define cudaStreamWaitEvent hipStreamWaitEvent
-#define cudaSuccess hipSuccess
-#define cudaSetDevice hipSetDevice
-#define cudaGetDevice hipGetDevice
-#define cudaGetDeviceCount hipGetDeviceCount
-#define cudaDeviceSynchronize hipDeviceSynchronize
-#define cudaErrorInvalidResourceHandle hipErrorInvalidResourceHandle
-#define cudaMalloc hipMalloc
-#define cudaFree hipFree
-#define cudaMemcpy hipMemcpy
-#define cudaMemset hipMemset
-#define cudaMemcpyAsync hipMemcpyAsync
-#define cudaMemcpyDeviceToDevice hipMemcpyDeviceToDevice
-#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
-#define cudaMemcpyHostToDevice hipMemcpyHostToDevice
-#define cublasCreate hipblasCreate
-#define cublasDestroy hipblasDestroy
-#define CUBLAS_STATUS_SUCCESS HIPBLAS_STATUS_SUCCESS
-#define cublasDgeam hipblasDgeam
-#define cublasDgemm hipblasDgemm
-#define cublasDtrsm hipblasDtrsm
-#define cublasDsyrk hipblasDsyrk
-#define cublasDgemmBatched hipblasDgemmBatched
-#define cublasSgeam hipblasSgeam
-#define cublasSgemm hipblasSgemm
-#define cublasStrsm hipblasStrsm
-#define cublasSsyrk hipblasSsyrk
-#define cublasSgemmBatched hipblasSgemmBatched
-#define cublasGetStream hipblasGetStream
-#define cublasSetStream hipblasSetStream
-#define cublasHandle_t hipblasHandle_t
-#define cublasOperation_t hipblasOperation_t
-#define cublasStatus_t hipblasStatus_t
-#define CUBLAS_OP_N HIPBLAS_OP_N
-#define CUBLAS_OP_T HIPBLAS_OP_T
-#define cudaSuccess hipSuccess
-#define cudaGetErrorString hipGetErrorString 
-#define cudaError_t hipError_t 
-#define curandGenerator_t hiprandGenerator_t
-#define curandSetStream hiprandSetStream
-#define curandCreateGenerator hiprandCreateGenerator
-#define curandDestroyGenerator hiprandDestroyGenerator
-#define curandGenerateUniformDouble hiprandGenerateUniformDouble
-#define curandGenerateUniform hiprandGenerateUniform
-#define CURAND_RNG_PSEUDO_DEFAULT HIPRAND_RNG_PSEUDO_DEFAULT
-#define cublasSideMode_t hipblasSideMode_t
-#define CUBLAS_SIDE_LEFT HIPBLAS_SIDE_LEFT
-#define CUBLAS_SIDE_RIGHT HIPBLAS_SIDE_RIGHT
-#define cublasFillMode_t hipblasFillMode_t
-#define CUBLAS_DIAG_NON_UNIT HIPBLAS_DIAG_NON_UNIT
-#define CUBLAS_DIAG_UNIT HIPBLAS_DIAG_UNIT
-#define cublasDiagType_t hipblasDiagType_t
-#define CUBLAS_FILL_MODE_LOWER HIPBLAS_FILL_MODE_LOWER
-#define CUBLAS_FILL_MODE_UPPER HIPBLAS_FILL_MODE_UPPER
 #endif
 #include <memory>
 #include <iostream>
@@ -88,15 +22,104 @@
 
 namespace rtat {
 
+namespace gpu {
+#if defined (_RTAT_CUDA)
+#define _RTAT_GPU(x) cuda##x
+#define _RTAT_GPU_BLAS(x) cublas##x
+#define _RTAT_GPU_ENUM(x) CU##x
+#elif defined(_RTAT_HIP)
+#define _RTAT_GPU(x) hip##x
+#define _RTAT_GPU_BLAS(x) hipblas##x
+#define _RTAT_GPU_ENUM(x) HIP##x
+#endif
+  constexpr auto Success = _RTAT_GPU(Success);
+  constexpr auto SetDevice = _RTAT_GPU(SetDevice);
+  constexpr auto GetDevice = _RTAT_GPU(GetDevice);
+  constexpr auto GetDeviceCount = _RTAT_GPU(GetDeviceCount);
+  constexpr auto DeviceSynchronize = _RTAT_GPU(DeviceSynchronize);
+  constexpr auto MemGetInfo = _RTAT_GPU(MemGetInfo);
+
+  using Error_t = _RTAT_GPU(Error_t);
+  constexpr auto GetErrorString = _RTAT_GPU(GetErrorString);
+  constexpr auto ErrorInvalidResourceHandle = _RTAT_GPU(ErrorInvalidResourceHandle);
+  constexpr auto Free = _RTAT_GPU(Free);
+
+  // The constexpr auto trick seems not to work with Malloc
+  template<typename T>
+  constexpr Error_t Malloc(T** ptr, size_t size) {
+    return _RTAT_GPU(Malloc)(ptr,size);
+  }
+
+  using  Stream_t = _RTAT_GPU(Stream_t);
+  constexpr auto StreamCreate = _RTAT_GPU(StreamCreate);
+  constexpr auto StreamDestroy =  _RTAT_GPU(StreamDestroy);
+  constexpr auto StreamSynchronize = _RTAT_GPU(StreamSynchronize);
+  constexpr auto StreamWaitEvent = _RTAT_GPU(StreamWaitEvent);
+
+  using Event_t = _RTAT_GPU(Event_t);
+  constexpr auto EventCreate = _RTAT_GPU(EventCreate);
+  constexpr auto EventDestroy = _RTAT_GPU(EventDestroy);
+  constexpr auto EventRecord = _RTAT_GPU(EventRecord);
+  constexpr auto EventSynchronize = _RTAT_GPU(EventSynchronize);
+  constexpr auto EventElapsedTime = _RTAT_GPU(EventElapsedTime);
+  constexpr auto EventQuery = _RTAT_GPU(EventQuery);
+
+  constexpr auto Memcpy = _RTAT_GPU(Memcpy);
+  constexpr auto Memset = _RTAT_GPU(Memset);
+  constexpr auto MemcpyAsync = _RTAT_GPU(MemcpyAsync);
+  constexpr auto MemcpyDeviceToDevice = _RTAT_GPU(MemcpyDeviceToDevice);
+  constexpr auto MemcpyDeviceToHost = _RTAT_GPU(MemcpyDeviceToHost);
+  constexpr auto MemcpyHostToDevice = _RTAT_GPU(MemcpyHostToDevice);
+
+  using blasHandle_t = _RTAT_GPU_BLAS(Handle_t);
+  using blasOperation_t = _RTAT_GPU_BLAS(Operation_t);
+  using blasStatus_t = _RTAT_GPU_BLAS(Status_t);
+  constexpr auto BLAS_STATUS_SUCCESS = _RTAT_GPU_ENUM(BLAS_STATUS_SUCCESS);
+  constexpr auto blasCreate = _RTAT_GPU_BLAS(Create);
+  constexpr auto blasDestroy = _RTAT_GPU_BLAS(Destroy);
+  constexpr auto blasDgeam = _RTAT_GPU_BLAS(Dgeam);
+  constexpr auto blasDgemm = _RTAT_GPU_BLAS(Dgemm);
+  constexpr auto blasDtrsm = _RTAT_GPU_BLAS(Dtrsm);
+  constexpr auto blasDsyrk = _RTAT_GPU_BLAS(Dsyrk);
+  constexpr auto blasSgeam = _RTAT_GPU_BLAS(Sgeam);
+  constexpr auto blasSgemm = _RTAT_GPU_BLAS(Sgemm);
+  constexpr auto blasStrsm = _RTAT_GPU_BLAS(Strsm);
+  constexpr auto blasSsyrk = _RTAT_GPU_BLAS(Ssyrk);
+  constexpr auto blasGetStream = _RTAT_GPU_BLAS(GetStream);
+  constexpr auto blasSetStream = _RTAT_GPU_BLAS(SetStream);
+  using blasSideMode_t = _RTAT_GPU_BLAS(SideMode_t);
+  using blasDiagType_t = _RTAT_GPU_BLAS(DiagType_t);
+  using blasFillMode_t = _RTAT_GPU_BLAS(FillMode_t);
+  constexpr auto BLAS_SIDE_LEFT = _RTAT_GPU_ENUM(BLAS_SIDE_LEFT);
+  constexpr auto BLAS_SIDE_RIGHT = _RTAT_GPU_ENUM(BLAS_SIDE_RIGHT);
+  constexpr auto BLAS_DIAG_NON_UNIT = _RTAT_GPU_ENUM(BLAS_DIAG_NON_UNIT);
+  constexpr auto BLAS_DIAG_UNIT = _RTAT_GPU_ENUM(BLAS_DIAG_UNIT);
+  constexpr auto BLAS_FILL_MODE_LOWER = _RTAT_GPU_ENUM(BLAS_FILL_MODE_LOWER);
+  constexpr auto BLAS_FILL_MODE_UPPER = _RTAT_GPU_ENUM(BLAS_FILL_MODE_UPPER);
+  constexpr auto BLAS_OP_N = _RTAT_GPU_ENUM(BLAS_OP_N);
+  constexpr auto BLAS_OP_T = _RTAT_GPU_ENUM(BLAS_OP_T);
+
+  using randGenerator_t = hiprandGenerator_t;
+  constexpr auto randSetStream = _RTAT_GPU(randSetStream);
+  constexpr auto randCreateGenerator = _RTAT_GPU(randCreateGenerator);
+  constexpr auto randDestroyGenerator = _RTAT_GPU(randDestroyGenerator);
+  constexpr auto randGenerateUniformDouble = _RTAT_GPU(randGenerateUniformDouble);
+  constexpr auto randGenerateUniform = _RTAT_GPU(randGenerateUniform);
+  constexpr auto RAND_RNG_PSEUDO_DEFAULT = _RTAT_GPU_ENUM(RAND_RNG_PSEUDO_DEFAULT);
+#undef _RTAT_GPU
+#undef _RTAT_GPU_BLAS
+#undef _RTAT_GPU_ENUM
+}
+
 #define gpuAssert(ans)                          \
   {                                             \
     gpu_error_check((ans), __FILE__, __LINE__); \
   }
 
-inline void gpu_error_check(cudaError_t code, const char* file, int line)
+inline void gpu_error_check(gpu::Error_t code, const char* file, int line)
 {
-  if (code != cudaSuccess)
-    std::cerr << "GPU Error: " << cudaGetErrorString(code) 
+  if (code != gpu::Success)
+    std::cerr << "GPU Error: " << gpu::GetErrorString(code) 
               << " " << file << " " << line << std::endl;
 }
 
@@ -110,22 +133,22 @@ class Raw_Stream {
 public:
   friend class Stream;
   virtual ~Raw_Stream() = default;
-  operator cudaStream_t();
+  operator gpu::Stream_t();
 protected:
   Raw_Stream() {}
-  cudaStream_t stream;
+  gpu::Stream_t stream;
 };
 
 
 class Stream {
 public:
   Stream();
-  Stream(cudaStream_t stream);
+  Stream(gpu::Stream_t stream);
 
   Stream(const Stream& other);
   Stream& operator=(const Stream& other);
 
-  operator cudaStream_t();
+  operator gpu::Stream_t();
 
   void wait_event(Event e);
   void synchronize();
@@ -138,21 +161,21 @@ class Raw_Event {
 public:
   friend class Event;
   virtual ~Raw_Event() = default;
-  operator cudaEvent_t();
+  operator gpu::Event_t();
 protected:
   Raw_Event() {}
-  cudaEvent_t event;
+  gpu::Event_t event;
 };
 
 class Event {
 public:
   Event();
-  Event(cudaEvent_t event);
+  Event(gpu::Event_t event);
 
   Event(const Event& other);
   Event& operator=(const Event& other);
 
-  operator cudaEvent_t(); 
+  operator gpu::Event_t(); 
 
   void record(Stream s);
   void synchronize();
@@ -169,7 +192,7 @@ public:
   virtual ~Raw_Device_RNG() = default;
 protected:
   Raw_Device_RNG() = default;
-  curandGenerator_t rng;
+  gpu::randGenerator_t rng;
 };
 
 class Device_RNG {
@@ -180,10 +203,10 @@ public:
   Device_RNG(const Device_RNG& other);
   Device_RNG& operator=(const Device_RNG& other);
 
-  operator curandGenerator_t();
+  operator gpu::randGenerator_t();
 
   void set_stream(Stream s) {
-    curandSetStream(raw_rng->rng, s);
+    gpu::randSetStream(raw_rng->rng, s);
   }
 
   template<typename T, typename IGNORE = void>
@@ -191,12 +214,12 @@ public:
 
   template<typename IGNORE>
   void uniform(double *A, size_t len) {
-    curandGenerateUniformDouble(raw_rng->rng, A, len);
+    gpu::randGenerateUniformDouble(raw_rng->rng, A, len);
   }
 
   template<typename IGNORE>
   void uniform(float *A, size_t len) {
-    curandGenerateUniform(raw_rng->rng, A, len);
+    gpu::randGenerateUniform(raw_rng->rng, A, len);
   }
 
 private:
@@ -256,33 +279,33 @@ public:
 };
 
 struct BLAS_Operation_Str_Map {
-  static std::map<cublasOperation_t, std::string> map() {
-    return {{CUBLAS_OP_N, "N"}, 
-            {CUBLAS_OP_T, "T"}};
+  static std::map<gpu::blasOperation_t, std::string> map() {
+    return {{gpu::BLAS_OP_N, "N"}, 
+            {gpu::BLAS_OP_T, "T"}};
   }
 };
 using BLAS_Operation = String_Rep<BLAS_Operation_Str_Map>;
 
 struct BLAS_Fill_Mode_Str_Map {
-  static std::map<cublasFillMode_t, std::string> map() {
-    return {{CUBLAS_FILL_MODE_LOWER, "Lower"}, 
-            {CUBLAS_FILL_MODE_UPPER, "Upper"}};
+  static std::map<gpu::blasFillMode_t, std::string> map() {
+    return {{gpu::BLAS_FILL_MODE_LOWER, "Lower"}, 
+            {gpu::BLAS_FILL_MODE_UPPER, "Upper"}};
   }
 };
 using BLAS_Fill_Mode = String_Rep<BLAS_Fill_Mode_Str_Map>;
 
 struct BLAS_Side_Str_Map {
-  static std::map<cublasSideMode_t, std::string> map() {
-    return {{CUBLAS_SIDE_LEFT,  "Left"},
-            {CUBLAS_SIDE_RIGHT, "Right"}};
+  static std::map<gpu::blasSideMode_t, std::string> map() {
+    return {{gpu::BLAS_SIDE_LEFT,  "Left"},
+            {gpu::BLAS_SIDE_RIGHT, "Right"}};
   }
 };
 using BLAS_Side = String_Rep<BLAS_Side_Str_Map>;
 
 struct BLAS_Diag_Str_Map {
-  static std::map<cublasDiagType_t, std::string> map() {
-    return {{CUBLAS_DIAG_UNIT,     "Unit"},
-            {CUBLAS_DIAG_NON_UNIT, "Non-Unit"}};
+  static std::map<gpu::blasDiagType_t, std::string> map() {
+    return {{gpu::BLAS_DIAG_UNIT,     "Unit"},
+            {gpu::BLAS_DIAG_NON_UNIT, "Non-Unit"}};
   }
 };
 using BLAS_Diag = String_Rep<BLAS_Diag_Str_Map>;

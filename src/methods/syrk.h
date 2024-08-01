@@ -11,7 +11,7 @@ template<typename T>
 struct SYRK_Inputs {
   using Scalar = T;
 
-  cublasHandle_t handle;
+  gpu::blasHandle_t handle;
   BLAS_Fill_Mode uplo;
   BLAS_Operation trans; 
   const Matrix<T> A;
@@ -19,7 +19,7 @@ struct SYRK_Inputs {
   const T alpha; 
   const T beta; 
 
-  SYRK_Inputs(cublasHandle_t handle, BLAS_Fill_Mode uplo, 
+  SYRK_Inputs(gpu::blasHandle_t handle, BLAS_Fill_Mode uplo, 
               BLAS_Operation trans, 
               const Matrix<T> A, Matrix<T> C, 
               T alpha, T beta)
@@ -27,7 +27,7 @@ struct SYRK_Inputs {
           A(A), C(C), alpha(alpha), beta(beta) {}
 
   size_t n() {return C.dims().m;}
-  size_t k() {return trans == CUBLAS_OP_N ? A.dims().n : A.dims().m;}
+  size_t k() {return trans == gpu::BLAS_OP_N ? A.dims().n : A.dims().m;}
 };
 
 
@@ -84,34 +84,34 @@ protected:
               [[maybe_unused]] Stream s) override {
     size_t n = 64;
     double *A, *C;
-    gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&A, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&C, n*n*sizeof(double)));
 
     for (auto lower : {false,true}) {
       for (auto trans : {false,true}) {
         double alpha = 1.0;
         double beta = 0.0;
-        auto status = cublasDsyrk(params.handle,
-          lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER,
-          trans ? CUBLAS_OP_T : CUBLAS_OP_N,
+        auto status = gpu::blasDsyrk(params.handle,
+          lower ? gpu::BLAS_FILL_MODE_LOWER : gpu::BLAS_FILL_MODE_UPPER,
+          trans ? gpu::BLAS_OP_T : gpu::BLAS_OP_N,
           n, n, 
           &alpha,
           A, n,
           &beta,
           C, n);
-        if (status != CUBLAS_STATUS_SUCCESS) {
+        if (status != gpu::BLAS_STATUS_SUCCESS) {
           std::cout << "Fuc" << std::endl;
         }
-        status = cublasDgeam(params.handle, CUBLAS_OP_N, CUBLAS_OP_T, 
+        status = gpu::blasDgeam(params.handle, gpu::BLAS_OP_N, gpu::BLAS_OP_T, 
             n,n, &alpha, A, n, &beta, C, n, A, n);
-        if (status != CUBLAS_STATUS_SUCCESS) {
+        if (status != gpu::BLAS_STATUS_SUCCESS) {
           std::cout << "Fuc" << std::endl;
         }
       }
     }
-    gpuAssert(cudaDeviceSynchronize());
-    gpuAssert(cudaFree(A));
-    gpuAssert(cudaFree(C));
+    gpuAssert(gpu::DeviceSynchronize());
+    gpuAssert(gpu::Free(A));
+    gpuAssert(gpu::Free(C));
   }
 };
 

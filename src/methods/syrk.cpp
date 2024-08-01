@@ -74,22 +74,22 @@ std::unique_ptr<MatrixOp<T>> SYRK_Options::form_operation(SYRK_Inputs<T> params)
   std::unique_ptr<MatrixOp<T>> C = std::make_unique<NoOp<T>>(params.C);
 
   if (transpose_A) {
-    params.trans = (params.trans == CUBLAS_OP_N)
-      ? CUBLAS_OP_T
-      : CUBLAS_OP_N;
+    params.trans = (params.trans == gpu::BLAS_OP_N)
+      ? gpu::BLAS_OP_T
+      : gpu::BLAS_OP_N;
     A = std::make_unique<MatrixMove<T>>(
         std::move(A), 1.0, true, 1);
   }
 
   if (transpose_C) {
     // Transpose B
-    params.uplo = (params.uplo == CUBLAS_FILL_MODE_UPPER) 
-      ? CUBLAS_FILL_MODE_LOWER
-      : CUBLAS_FILL_MODE_UPPER;
+    params.uplo = (params.uplo == gpu::BLAS_FILL_MODE_UPPER) 
+      ? gpu::BLAS_FILL_MODE_LOWER
+      : gpu::BLAS_FILL_MODE_UPPER;
     std::unique_ptr<MatrixOp<T>> scratch = std::make_unique<MatrixSyrkAlloc<T>>(
         std::move(A), 
-        params.uplo == CUBLAS_FILL_MODE_LOWER,
-        params.trans == CUBLAS_OP_T,
+        params.uplo == gpu::BLAS_FILL_MODE_LOWER,
+        params.trans == gpu::BLAS_OP_T,
         params.alpha);
 
     return std::make_unique<MatrixAccumulate<T>>(
@@ -97,8 +97,8 @@ std::unique_ptr<MatrixOp<T>> SYRK_Options::form_operation(SYRK_Inputs<T> params)
   } else {
     return std::make_unique<MatrixSyrk<T>>(
         std::move(A), std::move(C), 
-        params.uplo == CUBLAS_FILL_MODE_LOWER,
-        params.trans == CUBLAS_OP_T,
+        params.uplo == gpu::BLAS_FILL_MODE_LOWER,
+        params.trans == gpu::BLAS_OP_T,
         params.alpha, params.beta);
   }
 }

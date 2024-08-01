@@ -11,21 +11,21 @@ template<typename T>
 struct GEMM_Inputs {
   using Scalar = T;
 
-  cublasHandle_t handle;
+  gpu::blasHandle_t handle;
   BLAS_Operation transa; BLAS_Operation transb;
   const Matrix<T> A;
   const Matrix<T> B;
         Matrix<T> C;
   const T alpha; const T beta;
 
-  GEMM_Inputs(cublasHandle_t handle, BLAS_Operation transa, BLAS_Operation transb,
+  GEMM_Inputs(gpu::blasHandle_t handle, BLAS_Operation transa, BLAS_Operation transb,
               const Matrix<T> A, const Matrix<T> B, Matrix<T> C, T alpha, T beta)
         : handle(handle), transa(transa), transb(transb), A(A), B(B), C(C), 
           alpha(alpha), beta(beta) {}
 
   size_t m() {return C.dims().m;}
   size_t n() {return C.dims().n;}
-  size_t k() {return (transa == CUBLAS_OP_N) ? A.dims().n : A.dims().m;}
+  size_t k() {return (transa == gpu::BLAS_OP_N) ? A.dims().n : A.dims().m;}
 };
 
 
@@ -118,24 +118,24 @@ protected:
               [[maybe_unused]] Stream s) override {
     size_t n = 8;
     double *A, *B, *C;
-    gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&A, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&B, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&C, n*n*sizeof(double)));
 
-    std::vector<BLAS_Operation> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
+    std::vector<BLAS_Operation> ops = {gpu::BLAS_OP_N, gpu::BLAS_OP_T};
 
     for (auto &opA : ops) {
       for (auto &opB : ops) {
         double alpha = 1.0;
         double beta = 0.0;
-        cublasDgemm(params.handle, opA, opB, n,n,n, &alpha, A,n,B,n, &beta, C,n);
-        cublasDgeam(params.handle, opA, opB, n,n, &alpha, A, n, &beta, B, n, C, n);
+        gpu::blasDgemm(params.handle, opA, opB, n,n,n, &alpha, A,n,B,n, &beta, C,n);
+        gpu::blasDgeam(params.handle, opA, opB, n,n, &alpha, A, n, &beta, B, n, C, n);
       }
     }
-    gpuAssert(cudaDeviceSynchronize());
-    gpuAssert(cudaFree(A));
-    gpuAssert(cudaFree(B));
-    gpuAssert(cudaFree(C));
+    gpuAssert(gpu::DeviceSynchronize());
+    gpuAssert(gpu::Free(A));
+    gpuAssert(gpu::Free(B));
+    gpuAssert(gpu::Free(C));
   }
 };
 
@@ -146,24 +146,24 @@ protected:
               [[maybe_unused]] Stream s) override {
     size_t n = 8;
     double *A, *B, *C;
-    gpuAssert(cudaMalloc(&A, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&B, n*n*sizeof(double)));
-    gpuAssert(cudaMalloc(&C, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&A, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&B, n*n*sizeof(double)));
+    gpuAssert(gpu::Malloc(&C, n*n*sizeof(double)));
 
-    std::vector<BLAS_Operation> ops = {CUBLAS_OP_N, CUBLAS_OP_T};
+    std::vector<BLAS_Operation> ops = {gpu::BLAS_OP_N, gpu::BLAS_OP_T};
 
     for (auto &opA : ops) {
       for (auto &opB : ops) {
         double alpha = 1.0;
         double beta = 0.0;
-        cublasDgemm(params.handle, opA, opB, n,n,n, &alpha, A,n,B,n, &beta, C,n);
-        cublasDgeam(params.handle, opA, opB, n,n, &alpha, A, n, &beta, B, n, C, n);
+        gpu::blasDgemm(params.handle, opA, opB, n,n,n, &alpha, A,n,B,n, &beta, C,n);
+        gpu::blasDgeam(params.handle, opA, opB, n,n, &alpha, A, n, &beta, B, n, C, n);
       }
     }
-    gpuAssert(cudaDeviceSynchronize());
-    gpuAssert(cudaFree(A));
-    gpuAssert(cudaFree(B));
-    gpuAssert(cudaFree(C));
+    gpuAssert(gpu::DeviceSynchronize());
+    gpuAssert(gpu::Free(A));
+    gpuAssert(gpu::Free(B));
+    gpuAssert(gpu::Free(C));
   }
 };
 

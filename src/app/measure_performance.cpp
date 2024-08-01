@@ -4,15 +4,15 @@
 
 using namespace rtat;
 
-cublasOperation_t read_op(std::string op) {
-  if (op == "N") return CUBLAS_OP_N;
-  if (op == "T") return CUBLAS_OP_T;
+gpu::blasOperation_t read_op(std::string op) {
+  if (op == "N") return gpu::BLAS_OP_N;
+  if (op == "T") return gpu::BLAS_OP_T;
   throw;
 }
 
 Workspace allocate_workspace(size_t size) {
   double *ptr;
-  gpuAssert(cudaMalloc(&ptr, size));
+  gpuAssert(gpu::Malloc(&ptr, size));
   return Workspace(ptr, size/sizeof(double));
 }
 
@@ -37,16 +37,16 @@ int main(int argc, char *argv[]) {
 
   GEMM_Planner planner;
 
-  cublasHandle_t handle;
-  cublasCreate(&handle);
+  gpu::blasHandle_t handle;
+  gpu::blasCreate(&handle);
 
   Stream s;
-  cublasSetStream(handle, s);
+  gpu::blasSetStream(handle, s);
 
   auto plans = GEMM_Options::enumerate();
 
-  auto A = opA == CUBLAS_OP_N ? allocate_matrix(m,k) : allocate_matrix(k,m);
-  auto B = opB == CUBLAS_OP_N ? allocate_matrix(k,n) : allocate_matrix(n,k);
+  auto A = opA == gpu::BLAS_OP_N ? allocate_matrix(m,k) : allocate_matrix(k,m);
+  auto B = opB == gpu::BLAS_OP_N ? allocate_matrix(k,n) : allocate_matrix(n,k);
   auto C = allocate_matrix(m,n);
   GEMM_Inputs inputs(handle, opA, opB, A, B, C, 1.0, 0.0);
   Workspace space;

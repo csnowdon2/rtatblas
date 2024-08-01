@@ -11,13 +11,13 @@ protected:
   virtual ~BLAS_Test() = default;
 
   Stream s;
-  cublasHandle_t handle;
+  gpu::blasHandle_t handle;
   virtual void SetUp() {
-    cublasCreate(&handle);
-    cublasSetStream(handle, s);
+    gpu::blasCreate(&handle);
+    gpu::blasSetStream(handle, s);
   }
   virtual void TearDown() {
-    cublasDestroy(handle);
+    gpu::blasDestroy(handle);
   }
 };
 
@@ -44,13 +44,13 @@ public:
   std::vector<T> host_vector;
 
   void upload() {
-    gpuAssert(cudaMemcpy(space, host_vector.data(), host_vector.size()*sizeof(T), 
-                         cudaMemcpyHostToDevice));
+    gpuAssert(gpu::Memcpy(space, host_vector.data(), host_vector.size()*sizeof(T), 
+                         gpu::MemcpyHostToDevice));
   }
 
   void download() {
-    gpuAssert(cudaMemcpy(host_vector.data(), space, host_vector.size()*sizeof(T), 
-                         cudaMemcpyDeviceToHost));
+    gpuAssert(gpu::Memcpy(host_vector.data(), space, host_vector.size()*sizeof(T), 
+                         gpu::MemcpyDeviceToHost));
   }
 
   void randomize_host() {
@@ -71,8 +71,8 @@ public:
     }
 
     std::cout << "Size = " << footprint()*sizeof(T) << std::endl;
-    gpuAssert(cudaMemcpy(space, A.ptr(), footprint()*sizeof(T), 
-                         cudaMemcpyDeviceToDevice));
+    gpuAssert(gpu::Memcpy(space, A.ptr(), footprint()*sizeof(T), 
+                         gpu::MemcpyDeviceToDevice));
   }
 
   Matrix<T> matrix() {
