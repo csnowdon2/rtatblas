@@ -31,10 +31,12 @@ namespace gpu {
 #if defined (_RTAT_CUDA)
 #define _RTAT_GPU(x) cuda##x
 #define _RTAT_GPU_BLAS(x) cublas##x
+#define _RTAT_GPU_RAND(x) cu##x
 #define _RTAT_GPU_ENUM(x) CU##x
 #elif defined(_RTAT_HIP)
 #define _RTAT_GPU(x) hip##x
 #define _RTAT_GPU_BLAS(x) hipblas##x
+#define _RTAT_GPU_RAND(x) hip##x
 #define _RTAT_GPU_ENUM(x) HIP##x
 #else 
   static_assert(false, "Compiler must define either _RTAT_CUDA or _RTAT_HIP");
@@ -64,7 +66,11 @@ namespace gpu {
   constexpr auto StreamWaitEvent = _RTAT_GPU(StreamWaitEvent);
 
   using Event_t = _RTAT_GPU(Event_t);
-  constexpr auto EventCreate = _RTAT_GPU(EventCreate);
+
+  // The constexpr auto trick seems not to work with EventCreate on CUDA
+  inline Error_t EventCreate(Event_t *event) {
+    return _RTAT_GPU(EventCreate)(event);
+  }
   constexpr auto EventDestroy = _RTAT_GPU(EventDestroy);
   constexpr auto EventRecord = _RTAT_GPU(EventRecord);
   constexpr auto EventSynchronize = _RTAT_GPU(EventSynchronize);
@@ -106,15 +112,16 @@ namespace gpu {
   constexpr auto BLAS_OP_N = _RTAT_GPU_ENUM(BLAS_OP_N);
   constexpr auto BLAS_OP_T = _RTAT_GPU_ENUM(BLAS_OP_T);
 
-  using randGenerator_t = hiprandGenerator_t;
-  constexpr auto randSetStream = _RTAT_GPU(randSetStream);
-  constexpr auto randCreateGenerator = _RTAT_GPU(randCreateGenerator);
-  constexpr auto randDestroyGenerator = _RTAT_GPU(randDestroyGenerator);
-  constexpr auto randGenerateUniformDouble = _RTAT_GPU(randGenerateUniformDouble);
-  constexpr auto randGenerateUniform = _RTAT_GPU(randGenerateUniform);
+  using randGenerator_t = _RTAT_GPU_RAND(randGenerator_t);
+  constexpr auto randSetStream = _RTAT_GPU_RAND(randSetStream);
+  constexpr auto randCreateGenerator = _RTAT_GPU_RAND(randCreateGenerator);
+  constexpr auto randDestroyGenerator = _RTAT_GPU_RAND(randDestroyGenerator);
+  constexpr auto randGenerateUniformDouble = _RTAT_GPU_RAND(randGenerateUniformDouble);
+  constexpr auto randGenerateUniform = _RTAT_GPU_RAND(randGenerateUniform);
   constexpr auto RAND_RNG_PSEUDO_DEFAULT = _RTAT_GPU_ENUM(RAND_RNG_PSEUDO_DEFAULT);
 #undef _RTAT_GPU
 #undef _RTAT_GPU_BLAS
+#undef _RTAT_GPU_RAND
 #undef _RTAT_GPU_ENUM
 }
 
