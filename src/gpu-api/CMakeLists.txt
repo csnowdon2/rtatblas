@@ -1,3 +1,11 @@
 add_library(gpu-api gpu-api.cpp)
 target_link_libraries(gpu-api PUBLIC ${GPU_LIBRARIES})
 target_include_directories(gpu-api PUBLIC ${CMAKE_CURRENT_LIST_DIR} ${GPU_INCLUDE_DIRS})
+
+if(DEFINED _RTAT_HIP)
+  target_compile_definitions(gpu-api PUBLIC _RTAT_HIP)
+elseif(DEFINED _RTAT_CUDA)
+  target_compile_definitions(gpu-api PUBLIC _RTAT_CUDA)
+else()
+  message(FATAL_ERROR "One of _RTAT_HIP and _RTAT_CUDA must be defined")
+endif()

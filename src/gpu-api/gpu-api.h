@@ -36,6 +36,8 @@ namespace gpu {
 #define _RTAT_GPU(x) hip##x
 #define _RTAT_GPU_BLAS(x) hipblas##x
 #define _RTAT_GPU_ENUM(x) HIP##x
+#else 
+  static_assert(false, "Compiler must define either _RTAT_CUDA or _RTAT_HIP");
 #endif
   constexpr auto Success = _RTAT_GPU(Success);
   constexpr auto SetDevice = _RTAT_GPU(SetDevice);
