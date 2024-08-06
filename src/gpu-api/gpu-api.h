@@ -8,12 +8,17 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma clang diagnostic ignored "-Wnested-anon-types"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include <hip/hip_runtime.h>
 #include <hipblas/hipblas.h>
 #include <hiprand/hiprand.h>
 #if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop  
 #endif
 #endif
 #include <memory>
