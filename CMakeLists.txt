@@ -11,7 +11,7 @@ add_library(rtatblas INTERFACE)
 # GPU libraries
 find_package(CUDAToolkit)
 
-if (NOT CUDAToolkit_FOUND)
+if (DEFINED CMAKE_HIP_PLATFORM OR NOT CUDAToolkit_FOUND)
   find_package(HIP REQUIRED)
   find_package(hipBLAS REQUIRED)
   find_package(hiprand REQUIRED)
